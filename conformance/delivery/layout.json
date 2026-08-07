@@ -1,0 +1,33 @@
+{
+ "corpus": "delivery",
+ "schema_version": "v0",
+ "note": "The on-disk contract between the tap, whatever ships its files, and whatever ingests them. It is a directory and a naming convention rather than a protocol, which is what makes the transport swappable: rclone, rsync, a shared mount, or a hand copy all satisfy it, and none of them requires code in the producer or the consumer. Because the convention is duplicated across the tap's constants, the shipper's config, and the analyzer's reader, it is stated here once and each copy is asserted against it by test. Divergence detected beats divergence impossible when the alternative is templating three package formats at build time.",
+
+ "active_segment": "active.jsonl",
+ "sealed_prefix": "seg-",
+ "orphan_prefix": "orphan-",
+ "suffix": ".jsonl",
+
+ "sealed_pattern": "seg-<incarnation>-<segment_seq>.jsonl",
+ "orphan_pattern": "orphan-<recovery_unix_ms>.jsonl",
+ "incarnation_pattern": "<run_start_unix_ms>-<pid>",
+
+ "ship_rule": "Ship and ingest everything except the file currently being written.",
+ "shipper_exclude": "active.jsonl",
+
+ "rules": [
+  "Only the active segment is in flight. Everything else in the directory is terminal: the process that wrote it will not write to it again.",
+  "Terminal files ship, including ones that could not be attributed to an incarnation. A file whose records are complete but whose identity was lost to a crash is sealed under the orphan prefix rather than deleted; its records are attributable to an instance and to no sequence.",
+  "The active segment must never be shipped or ingested. It is not merely incomplete — its CONTENT WILL CHANGE, and batch identity downstream is the content hash, so reading it now and reading the sealed version later stores every overlapping record twice.",
+  "Segment continuity is scoped to (instance, incarnation). A fresh incarnation starting at segment_seq 0 is a restart, not a gap.",
+  "Identity lives in the file's first record (segment_open), not in its name. Filenames carry the same fields for the shipper and for humans, but binding correctness to them would bind it to a property of the transport rather than of the data.",
+  "A shipper must treat a vanished source file as an expected outcome, not a retryable error: the disk-cap ring can unlink a segment between the shipper's listing and its open, and a shipper that stalls its queue on ENOENT converts a bounded, recorded drop into total shipping stoppage.",
+  "Retention drops the OLDEST segments first, ordered by (incarnation, segment_seq) with seq compared as a NUMBER. What survives a disk-cap drop is therefore the newest data: a contiguous run of the highest seqs per incarnation. A consumer's coverage math rests on this — it is what makes a declared drop describable as a range, and what lets a surviving window be read as the most recent one. Comparing seq as a string silently inverts it, because `10` sorts before `9`: past ten segments the ring begins preferring newer data for deletion, which is a retention policy that fails exactly when it is needed.",
+  "A declared drop (segments_dropped) is emitted once PER INCARNATION whose segments were reclaimed, and its `incarnation` names the run whose data is gone rather than the process that did the dropping — one enforcement pass can reclaim an earlier run's segments, and the dropping process is readable from the enclosing segment's own header. Grouping is what keeps `first_seq`/`last_seq` a description: within one incarnation the dropped set is contiguous, across incarnations it never is."
+ ],
+
+ "asserted_by": [
+  "infertap: tests/delivery_layout.rs -- the tap's constants, and the shipped systemd shipper unit's --exclude argument, parsed from the unit rather than matched by pattern.",
+  "analyzer: crates/ingest -- ACTIVE_SEGMENT, against the vendored copy of this file, once the contract pin carries it."
+ ]
+}

@@ -1,0 +1,31 @@
+messages decoded: 93   events: 278
+
+======================================================================
+map{block_hashes,block_size,extra_keys,group_idx,kv_cache_spec_kind,lora_id,lora_name,medium,parent_block_hash,token_ids,type}
+  count: 223
+    block_hashes             ['list[1]<int(57b)>', 'list[1]<int(58b)>', 'list[1]<int(59b)>', 'list[1]<int(60b)>', 'list[1]<int(61b)>', 'list[1]<int(62b)>', 'list[1]<int(63b)>', 'list[1]<int(64b)>', 'list[3]<int(62b)>', 'list[45]<int(60b)>', 'list[45]<int(63b)>', 'list[45]<int(64b)>', 'list[55]<int(64b)>', 'list[58]<int(61b)>', 'list[59]<int(64b)>', 'list[60]<int(61b)>', 'list[60]<int(63b)>', 'list[60]<int(64b)>', 'list[61]<int(63b)>', 'list[62]<int(63b)>', 'list[62]<int(64b)>', 'list[63]<int(62b)>', 'list[7]<int(64b)>']
+    block_size               ['int(5b)']
+    extra_keys               ['list[1]<null>', 'list[3]<null>', 'list[45]<list[1]<str>>', 'list[45]<null>', 'list[55]<null>', 'list[58]<null>', 'list[59]<null>', 'list[60]<null>', 'list[61]<null>', 'list[62]<null>', 'list[63]<null>', 'list[7]<null>']
+    group_idx                ['int(0b)']
+    kv_cache_spec_kind       ['str']
+    lora_id                  ['null']
+    lora_name                ['null']
+    medium                   ['str']
+    parent_block_hash        ['int(58b)', 'int(59b)', 'int(60b)', 'int(61b)', 'int(62b)', 'int(63b)', 'int(64b)', 'null']
+    token_ids                ['list[1008]<int(11b)>', 'list[112]<int(10b)>', 'list[16]<int(11b)>', 'list[16]<int(13b)>', 'list[16]<int(14b)>', 'list[16]<int(15b)>', 'list[16]<int(16b)>', 'list[16]<int(4b)>', 'list[16]<int(5b)>', 'list[16]<int(7b)>', 'list[16]<int(8b)>', 'list[48]<int(10b)>', 'list[720]<int(13b)>', 'list[880]<int(7b)>', 'list[928]<int(14b)>', 'list[944]<int(13b)>', 'list[960]<int(15b)>', 'list[960]<int(16b)>', 'list[960]<int(7b)>', 'list[976]<int(16b)>', 'list[976]<int(7b)>', 'list[992]<int(12b)>', 'list[992]<int(7b)>']
+    type                     ['str']
+    SAMPLE: {"type": "BlockStored", "block_hashes": [7592193820447134324, 9663982573080256121, 10571343834927062316, 10416328181111389018, "...+41"], "parent_block_hash": null, "token_ids": [7141, 1411, 27217, 1161, "...+716"], "block_size": 16, "lora_id": null, "medium": "GPU", "lora_name": null, "extra_keys": [["tenant-AAAA"], null, null, null, "...+41"], "group_idx": 0, "kv_cache_spec_kind": "full_attention"}
+    SAMPLE: {"type": "BlockStored", "block_hashes": [12955354968414679641, 16032592773066255487, 2416883006738883417, 13069573512583915780, "...+41"], "parent_block_hash": null, "token_ids": [7141, 1411, 27217, 1161, "...+716"], "block_size": 16, "lora_id": null, "medium": "GPU", "lora_name": null, "extra_keys": [["tenant-BBBB"], null, null, null, "...+41"], "group_idx": 0, "kv_cache_spec_kind": "full_attention"}
+    SAMPLE: {"type": "BlockStored", "block_hashes": [707355634144924430, 5027959294983200130, 3549729667746643450, 6214763967968852689, "...+41"], "parent_block_hash": null, "token_ids": [7141, 1411, 27217, 1161, "...+716"], "block_size": 16, "lora_id": null, "medium": "GPU", "lora_name": null, "extra_keys": [null, null, null, null, "...+41"], "group_idx": 0, "kv_cache_spec_kind": "full_attention"}
+
+======================================================================
+map{block_hashes,group_idx,medium,type}
+  count: 55
+    block_hashes             ['list[1]<int(58b)>', 'list[1]<int(59b)>', 'list[1]<int(61b)>', 'list[1]<int(62b)>', 'list[1]<int(63b)>', 'list[1]<int(64b)>']
+    group_idx                ['int(0b)']
+    medium                   ['str']
+    type                     ['str']
+    SAMPLE: {"type": "BlockRemoved", "block_hashes": [9935447879482441265], "medium": "GPU", "group_idx": 0}
+    SAMPLE: {"type": "BlockRemoved", "block_hashes": [2422661470345079445], "medium": "GPU", "group_idx": 0}
+    SAMPLE: {"type": "BlockRemoved", "block_hashes": [7337057064115055942], "medium": "GPU", "group_idx": 0}
+

@@ -1,0 +1,165 @@
+{
+ "corpus": "delivery-records",
+ "schema_version": "v0",
+ "note": "The records that describe the DELIVERY layer rather than the cache. layout.json pins the directory and the naming convention; this pins the records, which were contractual and unpinned -- so a consumer modelled two record families, counted all three of these as unknown drift, and could not read a declared data loss. Every kind here must be a kind a consumer models.",
+ "provenance": {
+  "gpu": "fixture",
+  "vllm_version": "0.26.0",
+  "event_schema_version": "vllm-0.26.0-map"
+ },
+ "incarnation_pattern": "<run_start_unix_ms>-<pid>",
+ "cases": [
+  {
+   "note": "opens every segment; carries the identity the filename merely echoes",
+   "expect": {
+    "gpu": "fixture",
+    "vllm_version": "0.26.0",
+    "event_schema_version": "vllm-0.26.0-map",
+    "kind": "segment_open",
+    "at_ms": 1785153670000.0,
+    "contract_version": "1.0",
+    "incarnation": "1785153670000-4242",
+    "segment_seq": 0
+   }
+  },
+  {
+   "note": "an attributable orphan: header survived, tail torn and discarded",
+   "expect": {
+    "gpu": "fixture",
+    "vllm_version": "0.26.0",
+    "event_schema_version": "vllm-0.26.0-map",
+    "kind": "segment_recovered",
+    "at_ms": 1785153671000.0,
+    "attributed": true,
+    "dropped_bytes": 137
+   }
+  },
+  {
+   "note": "an unattributable orphan: the crash took the header, so it belongs to no sequence and its span is coverage-indeterminate",
+   "expect": {
+    "gpu": "fixture",
+    "vllm_version": "0.26.0",
+    "event_schema_version": "vllm-0.26.0-map",
+    "kind": "segment_recovered",
+    "at_ms": 1785153672000.0,
+    "attributed": false,
+    "dropped_bytes": 0
+   }
+  },
+  {
+   "note": "declared loss -- segments 4 through 6 dropped under the disk cap. The magnitudes are illustrative; the shapes are the contract.",
+   "expect": {
+    "gpu": "fixture",
+    "vllm_version": "0.26.0",
+    "event_schema_version": "vllm-0.26.0-map",
+    "kind": "segments_dropped",
+    "at_ms": 1785153673000.0,
+    "incarnation": "1785153670000-4242",
+    "count": 3,
+    "first": "seg-1785153670000-4242-4.jsonl",
+    "last": "seg-1785153670000-4242-6.jsonl",
+    "first_seq": 4,
+    "last_seq": 6
+   }
+  },
+  {
+   "note": "the same pass reclaiming a PREVIOUS run's segments: a second record, under that run's incarnation rather than the dropping process's. One record per incarnation is what keeps a range describable.",
+   "expect": {
+    "gpu": "fixture",
+    "vllm_version": "0.26.0",
+    "event_schema_version": "vllm-0.26.0-map",
+    "kind": "segments_dropped",
+    "at_ms": 1785153673000.0,
+    "incarnation": "1785153600000-1817",
+    "count": 4,
+    "first": "seg-1785153600000-1817-11.jsonl",
+    "last": "seg-1785153600000-1817-14.jsonl",
+    "first_seq": 11,
+    "last_seq": 14
+   }
+  }
+ ],
+ "segment": {
+  "note": "one sealed segment as shipped. The header is first and every later record belongs to its incarnation; that containment is the contract, not a convention of this fixture.",
+  "filename": "seg-1785153670000-4242-0.jsonl",
+  "incarnation": "1785153670000-4242",
+  "lines": [
+   {
+    "gpu": "fixture",
+    "vllm_version": "0.26.0",
+    "event_schema_version": "vllm-0.26.0-map",
+    "kind": "segment_open",
+    "at_ms": 1785153670000.0,
+    "contract_version": "1.0",
+    "incarnation": "1785153670000-4242",
+    "segment_seq": 0
+   },
+   {
+    "gpu": "fixture",
+    "vllm_version": "0.26.0",
+    "event_schema_version": "vllm-0.26.0-map",
+    "kind": "store",
+    "at_ms": 1785153670010.0,
+    "instance_id": "i0",
+    "block_id": "8f2b1c04a7d93e15",
+    "n_tokens": 16,
+    "tier": "gpu"
+   },
+   {
+    "gpu": "fixture",
+    "vllm_version": "0.26.0",
+    "event_schema_version": "vllm-0.26.0-map",
+    "kind": "store",
+    "at_ms": 1785153670020.0,
+    "instance_id": "i0",
+    "block_id": "b3e77a190c4f2d68",
+    "n_tokens": 16,
+    "tier": "gpu"
+   },
+   {
+    "gpu": "fixture",
+    "vllm_version": "0.26.0",
+    "event_schema_version": "vllm-0.26.0-map",
+    "kind": "evict",
+    "at_ms": 1785153670030.0,
+    "instance_id": "i0",
+    "block_id": "8f2b1c04a7d93e15"
+   }
+  ]
+ },
+ "orphan_segment": {
+  "note": "an unattributed orphan as shipped: segment_recovered first, then the records that survived. No segment_open, no incarnation, no continuity claim -- the span it covers is coverage-indeterminate by construction.",
+  "filename": "orphan-1785153680000.jsonl",
+  "lines": [
+   {
+    "gpu": "fixture",
+    "vllm_version": "0.26.0",
+    "event_schema_version": "vllm-0.26.0-map",
+    "kind": "segment_recovered",
+    "at_ms": 1785153672000.0,
+    "attributed": false,
+    "dropped_bytes": 42
+   },
+   {
+    "gpu": "fixture",
+    "vllm_version": "0.26.0",
+    "event_schema_version": "vllm-0.26.0-map",
+    "kind": "store",
+    "at_ms": 1785153670010.0,
+    "instance_id": "i0",
+    "block_id": "8f2b1c04a7d93e15",
+    "n_tokens": 16,
+    "tier": "gpu"
+   },
+   {
+    "gpu": "fixture",
+    "vllm_version": "0.26.0",
+    "event_schema_version": "vllm-0.26.0-map",
+    "kind": "evict",
+    "at_ms": 1785153670030.0,
+    "instance_id": "i0",
+    "block_id": "8f2b1c04a7d93e15"
+   }
+  ]
+ }
+}

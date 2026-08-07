@@ -1,0 +1,24 @@
+{
+ "schema_version": "v0",
+ "producer": {
+  "vllm": "0.26.0",
+  "event_schema": "vllm-0.26.0-map",
+  "msgspec": "0.21.1"
+ },
+ "name": "cleared_all",
+ "note": "CONSTRUCTED, not captured: vLLM 0.26.0 exposes no route that triggers a cache reset, so no live AllBlocksCleared exists to capture. Shape follows the two observed kinds; re-cut from a real one when an engine can be made to emit it",
+ "source": "s0",
+ "wire_hex": "93cb41da99d221898bd19183a474797065b0416c6c426c6f636b73436c6561726564a66d656469756da3475055a967726f75705f6964780000",
+ "expect": {
+  "events": [
+   {
+    "at_ms": 1785153670149.1587,
+    "dp_rank": 0,
+    "group_idx": 0,
+    "type": "Cleared",
+    "medium": "GPU"
+   }
+  ],
+  "unknown_types": 0
+ }
+}

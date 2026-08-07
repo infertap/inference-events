@@ -1,0 +1,39 @@
+========================================================================
+kvcap report  tag=sha256
+========================================================================
+endpoint          tcp://127.0.0.1:5557
+decoder           msgpack
+messages          682
+payload bytes     4444039
+observed span     240.1s
+message rate      2.8 msg/s
+wire rate         18.1 KiB/s
+mean payload      6516 B
+publisher seq gaps 0   (nonzero = the publisher outran this capture)
+
+-- framing ---------------------------------------------------------
+multipart arity   {3: 682}   (vLLM publishes 3: topic, seq, payload)
+
+-- batch envelope --------------------------------------------------
+batch arity       {3: 682}
+  batch[0]        ['float']
+  batch[1]        ['list[101]<map[4]>', 'list[102]<map[4]>', 'list[103]<map[4]>', 'list[105]<map[11]>', 'list[105]<map[4]>', 'list[106]<map[11]>', 'list[107]<map[11]>', 'list[107]<map[4]>', 'list[109]<map[4]>', 'list[10]<map[11]>', 'list[110]<map[4]>', 'list[111]<map[4]>', 'list[113]<map[4]>', 'list[115]<map[4]>', 'list[117]<map[4]>', 'list[120]<map[4]>', 'list[121]<map[4]>', 'list[122]<map[4]>', 'list[123]<map[4]>', 'list[124]<map[4]>', 'list[125]<map[4]>', 'list[126]<map[11]>', 'list[126]<map[4]>', 'list[127]<map[11]>', 'list[127]<map[4]>', 'list[128]<map[11]>', 'list[128]<map[4]>', 'list[129]<map[11]>', 'list[129]<map[4]>', 'list[12]<map[4]>', 'list[130]<map[11]>', 'list[130]<map[4]>', 'list[131]<map[11]>', 'list[131]<map[4]>', 'list[132]<map[11]>', 'list[132]<map[4]>', 'list[133]<map[11]>', 'list[133]<map[4]>', 'list[134]<map[4]>', 'list[135]<map[4]>', 'list[136]<map[4]>', 'list[137]<map[4]>', 'list[139]<map[4]>', 'list[159]<map[4]>', 'list[164]<map[4]>', 'list[165]<map[4]>', 'list[167]<map[4]>', 'list[190]<map[4]>', 'list[192]<map[4]>', 'list[194]<map[4]>', 'list[1]<map[11]>', 'list[1]<map[4]>', 'list[20]<map[4]>', 'list[212]<map[4]>', 'list[216]<map[4]>', 'list[217]<map[4]>', 'list[219]<map[4]>', 'list[21]<map[4]>', 'list[221]<map[4]>', 'list[23]<map[4]>', 'list[24]<map[4]>', 'list[253]<map[4]>', 'list[26]<map[4]>', 'list[27]<map[4]>', 'list[28]<map[4]>', 'list[29]<map[4]>', 'list[2]<map[11]>', 'list[2]<map[4]>', 'list[30]<map[11]>', 'list[30]<map[4]>', 'list[33]<map[11]>', 'list[33]<map[4]>', 'list[34]<map[4]>', 'list[35]<map[11]>', 'list[35]<map[4]>', 'list[36]<map[4]>', 'list[37]<map[11]>', 'list[38]<map[4]>', 'list[39]<map[4]>', 'list[3]<map[11]>', 'list[3]<map[4]>', 'list[40]<map[4]>', 'list[41]<map[4]>', 'list[42]<map[4]>', 'list[45]<map[4]>', 'list[4]<map[11]>', 'list[4]<map[4]>', 'list[52]<map[4]>', 'list[56]<map[11]>', 'list[56]<map[4]>', 'list[57]<map[4]>', 'list[58]<map[4]>', 'list[59]<map[4]>', 'list[5]<map[11]>', 'list[5]<map[4]>', 'list[60]<map[11]>', 'list[60]<map[4]>', 'list[61]<map[4]>', 'list[62]<map[11]>', 'list[62]<map[4]>', 'list[63]<map[4]>', 'list[64]<map[4]>', 'list[65]<map[4]>', 'list[66]<map[4]>', 'list[67]<map[11]>', 'list[67]<map[4]>', 'list[68]<map[11]>', 'list[68]<map[4]>', 'list[69]<map[4]>', 'list[6]<map[4]>', 'list[70]<map[11]>', 'list[73]<map[4]>', 'list[74]<map[4]>', 'list[75]<map[4]>', 'list[76]<map[11]>', 'list[77]<map[11]>', 'list[79]<map[4]>', 'list[7]<map[11]>', 'list[7]<map[4]>', 'list[80]<map[4]>', 'list[81]<map[4]>', 'list[83]<map[4]>', 'list[84]<map[4]>', 'list[85]<map[4]>', 'list[86]<map[4]>', 'list[87]<map[11]>', 'list[88]<map[4]>', 'list[89]<map[11]>', 'list[89]<map[4]>', 'list[90]<map[4]>', 'list[91]<map[4]>', 'list[92]<map[11]>', 'list[92]<map[4]>', 'list[93]<map[4]>', 'list[94]<map[11]>', 'list[94]<map[4]>', 'list[95]<map[4]>', 'list[96]<map[11]>', 'list[97]<map[11]>', 'list[97]<map[4]>', 'list[98]<map[4]>', 'list[99]<map[11]>']
+  batch[2]        ['int(0b)']
+
+-- events ----------------------------------------------------------
+
+========================================================================
+KEY ANSWERS
+========================================================================
+block_hashes  (BlockStored[1])  ['<not observed>']
+    -> 'list[N]<bytes(32)>' = sha256 as msgpack bin. infertap's i64 model
+       cannot hold it; T0-b answered, N4 is confirmed as a type change.
+    -> 'list[N]<int(256b)>'  = oversized int instead. Different fix, same verdict.
+    -> 'list[N]<int(<=63b)>' = a 64-bit hash. Check which algo produced it.
+parent_hash   (BlockStored[2])  ['<not observed>']
+token_ids     (BlockStored[3])  ['<not observed>']
+    -> anything but 'null' means prompt content transits this socket (N1).
+lora_id       (BlockStored[5])  ['<not observed>']
+dp_rank       (batch[2])        PRESENT  ['int(0b)']
+    -> PRESENT means workers share this endpoint; N2 is live and instance
+       identity must fold it in.

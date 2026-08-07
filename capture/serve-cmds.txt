@@ -1,0 +1,16 @@
+vllm 0.26.0, msgspec 0.21.1, pyzmq 27.1.0, py3.10.12, NVIDIA A10 580.105.08
+run A (tag=sha256): --prefix-caching-hash-algo sha256, endpoint tcp://*:5557
+run B (tag=salt):   --prefix-caching-hash-algo sha256_cbor, endpoint tcp://*:5557, cache_salt probe
+common: --max-model-len 4096 --num-gpu-blocks-override 1024, Qwen/Qwen2.5-0.5B-Instruct
+KVEventsConfig defaults: buffer_steps=10000 hwm=100000 max_queue_size=100000 topic=''
+
+FINDINGS:
+- events are msgpack MAPS with a "type" key, not tagged arrays
+- block_hashes are u64; values above i64::MAX are common
+- token_ids present, up to ~2048 per event, dominates payload size
+- extra_keys carries cache_salt IN CLEARTEXT on block 0 (refutes flagged item 1)
+- dp_rank always present at batch[2]
+- group_idx + kv_cache_spec_kind are new identity dimensions
+- endpoint tcp://127.0.0.1:PORT binds nothing and publishes nothing, SILENTLY; tcp://*:PORT works
+- no HTTP route to trigger AllBlocksCleared at 0.26.0
+- single A10: no data-parallel run; dp_rank>0 and group_idx>0 uncaptured

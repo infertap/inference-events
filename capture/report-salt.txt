@@ -1,0 +1,39 @@
+========================================================================
+kvcap report  tag=salt
+========================================================================
+endpoint          tcp://127.0.0.1:5557
+decoder           msgpack
+messages          93
+payload bytes     101242
+observed span     14.3s
+message rate      6.5 msg/s
+wire rate         6.9 KiB/s
+mean payload      1089 B
+publisher seq gaps 0   (nonzero = the publisher outran this capture)
+
+-- framing ---------------------------------------------------------
+multipart arity   {3: 93}   (vLLM publishes 3: topic, seq, payload)
+
+-- batch envelope --------------------------------------------------
+batch arity       {3: 93}
+  batch[0]        ['float']
+  batch[1]        ['list[10]<map[11]>', 'list[11]<map[11]>', 'list[12]<map[11]>', 'list[12]<map[4]>', 'list[13]<map[11]>', 'list[1]<map[11]>', 'list[1]<map[4]>', 'list[2]<map[11]>', 'list[2]<map[4]>', 'list[3]<map[11]>', 'list[4]<map[11]>', 'list[4]<map[4]>', 'list[5]<map[11]>', 'list[6]<map[4]>', 'list[8]<map[11]>']
+  batch[2]        ['int(0b)']
+
+-- events ----------------------------------------------------------
+
+========================================================================
+KEY ANSWERS
+========================================================================
+block_hashes  (BlockStored[1])  ['<not observed>']
+    -> 'list[N]<bytes(32)>' = sha256 as msgpack bin. infertap's i64 model
+       cannot hold it; T0-b answered, N4 is confirmed as a type change.
+    -> 'list[N]<int(256b)>'  = oversized int instead. Different fix, same verdict.
+    -> 'list[N]<int(<=63b)>' = a 64-bit hash. Check which algo produced it.
+parent_hash   (BlockStored[2])  ['<not observed>']
+token_ids     (BlockStored[3])  ['<not observed>']
+    -> anything but 'null' means prompt content transits this socket (N1).
+lora_id       (BlockStored[5])  ['<not observed>']
+dp_rank       (batch[2])        PRESENT  ['int(0b)']
+    -> PRESENT means workers share this endpoint; N2 is live and instance
+       identity must fold it in.

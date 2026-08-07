@@ -1,0 +1,54 @@
+{
+  "tag": "salt",
+  "note": "vllm 0.26.0, sha256_cbor, A10; cache_salt probe; endpoint tcp://*:5557 (loopback bind publishes nothing, silently)",
+  "endpoint": "tcp://127.0.0.1:5557",
+  "decoder": "msgpack",
+  "captured_at_unix": 1785155400.7118533,
+  "captured_at_iso": "2026-07-27T12:30:00Z",
+  "messages": 93,
+  "payload_bytes": 101242,
+  "observed_span_s": 14.283736944198608,
+  "seq_gaps": 0,
+  "frame_arity": {
+    "3": 93
+  },
+  "batch_arity": {
+    "3": 93
+  },
+  "event_counts": {},
+  "field_shapes": {},
+  "batch_field_shapes": {
+    "0": [
+      "float"
+    ],
+    "1": [
+      "list[10]<map[11]>",
+      "list[11]<map[11]>",
+      "list[12]<map[11]>",
+      "list[12]<map[4]>",
+      "list[13]<map[11]>",
+      "list[1]<map[11]>",
+      "list[1]<map[4]>",
+      "list[2]<map[11]>",
+      "list[2]<map[4]>",
+      "list[3]<map[11]>",
+      "list[4]<map[11]>",
+      "list[4]<map[4]>",
+      "list[5]<map[11]>",
+      "list[6]<map[4]>",
+      "list[8]<map[11]>"
+    ],
+    "2": [
+      "int(0b)"
+    ]
+  },
+  "python": "3.10.12",
+  "platform": "Linux-6.8.0-1046-nvidia-x86_64-with-glibc2.35",
+  "TODO_fill_in": {
+    "vllm_version": "<paste `pip show vllm | head -2`>",
+    "msgspec_version": "<paste `pip show msgspec | head -2`>",
+    "engine_args": "<paste the full vllm serve command>",
+    "prefix_caching_hash_algo": "<the value you passed>",
+    "gpu": "<paste `nvidia-smi --query-gpu=name --format=csv,noheader`>"
+  }
+}
