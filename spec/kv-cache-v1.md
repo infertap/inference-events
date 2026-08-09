@@ -208,12 +208,24 @@ did not state.) A reader MUST treat each absent dimension as covering all its va
 A `clear` carries no block identity. A reader MUST close every residency it is tracking for the
 named holder and scope at `at_ms`, rather than matching identities. [^clear]
 
-> **This record's shape is constructed, not observed.** The reference engine exposes no route that
-> triggers a cache reset, so no live instance has been captured; the fields follow the two
-> observed record kinds, and the scope fields in particular are assumed rather than verified. A
-> producer that finds the scope absent MUST treat the clear as global for the named tier rather
-> than defaulting it: over-releasing fails visibly into the unresolved counter, under-releasing
-> fails silently. [^constructed]
+> **This record's shape is constructed, not observed — but no longer by analogy.** The reference
+> engine exposes no route that triggers a cache reset, so no live instance has been captured.
+> Until 2026-08-09 the fields here were inferred from the two observed record kinds, and the
+> companion wire fixtures accordingly gave the engine's clear event a tier and a group. Reading
+> the reference producer's own event definition settles it: that event declares **no fields at
+> all**, so on that engine a clear is global over every dimension except the data-parallel rank,
+> which rides the batch envelope rather than the event.
+>
+> The record schema above keeps `tier` and `group_idx` optional regardless: another engine may
+> declare them, and this contract is not one engine's. What narrowed is the companion corpus,
+> not the requirement — and the requirement was already pointing this way. A producer that finds
+> a scope dimension absent MUST treat the clear as global over it rather than defaulting it:
+> over-releasing fails visibly into the unresolved counter, under-releasing fails silently.
+> [^constructed]
+>
+> The general rule this instance illustrates: a capture bounds what may be **asserted**, not what
+> exists. Where an event cannot be captured at all, the producer's definition is the next-best
+> evidence, and it beats analogy with a neighbouring event every time.
 
 *Example (informative), from `telemetry/clear_is_scope_level`:*
 
@@ -266,7 +278,7 @@ two heartbeats describes the span between them.
 | `oversized` | integer | required | inbound messages refused for size |
 | `unknown_types` | integer | required | inbound messages of unmodelled type |
 | `events_ingested` | integer | required | events that reached the record model |
-| `content_unresolved` | integer | required | lookups for which no honest `content_id` existed |
+| `content_unresolved` | integer | required | records emitted with no `content_id`, one per omission (§3.1) |
 | `content_bridge_entries` | integer | required | identity-derivation state size (the producer's view of the resident set) |
 | `content_bridge_evicted` | integer | required | identity promises refused at the declared capacity — nonzero means some evicts will not resolve, each window also declared via `identity_refused` |
 | `publisher_restarts` | integer | required | engine-side restarts observed |

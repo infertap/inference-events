@@ -399,25 +399,45 @@ def build_constructed(records):
                   "interval on the same side it opened it",
                   payload, {"events": events, "unknown_types": unknown}))
 
-    # --- AllBlocksCleared: unobserved, so this one IS constructed and says so -----------
-    cleared = pack([ts, [{"type": "AllBlocksCleared", "medium": "GPU", "group_idx": 0}], dp])
+    # --- AllBlocksCleared: unobservable, so constructed -- but constructed from the engine's
+    # own event DEFINITION rather than by analogy with the observed kinds.
+    #
+    # Until 2026-08-09 these two fixtures gave the event a `medium` and a `group_idx`, copied
+    # from the shape of BlockStored and BlockRemoved because no live one could be captured.
+    # Reading the producer settles it: `class AllBlocksCleared(KVCacheEvent): pass` declares no
+    # fields at all, so neither value can ever ride this event and both fixtures pinned a wire
+    # shape the reference engine cannot emit. A capture bounds what can be ASSERTED, not what
+    # exists -- and where a capture is impossible, the definition is the next-best evidence and
+    # is a great deal better than analogy.
+    #
+    # The correction narrows the event rather than changing what a producer must do: with no
+    # tier and no group on the wire, every vLLM clear is global over both dimensions, which is
+    # exactly the direction the declared-never-defaulted rule already required. The RECORD
+    # schema keeps `tier` and `group_idx` optional -- another engine may declare them, and the
+    # telemetry corpus still pins that path from hand-authored events.
+    #
+    # The one scope dimension a real clear can carry is `dp_rank`, and it rides the batch
+    # envelope rather than the event. So that is the only thing separating these two fixtures.
+    cleared = pack([ts, [{"type": "AllBlocksCleared"}], dp])
     events, unknown = derive(msgpack.unpackb(bytes.fromhex(cleared), raw=False))
     out.append(fx("cleared_all",
-                  "CONSTRUCTED, not captured: vLLM 0.26.0 exposes no route that triggers a cache "
-                  "reset, so no live AllBlocksCleared exists to capture. Shape follows the two "
-                  "observed kinds; re-cut from a real one when an engine can be made to emit it",
+                  "CONSTRUCTED from the engine's event definition, not captured: vLLM exposes no "
+                  "route that triggers a cache reset, so no live AllBlocksCleared exists to "
+                  "capture. `AllBlocksCleared` declares NO fields, so the only scope it can carry "
+                  "is the batch envelope's dp_rank -- the clear is global over tier and group",
                   cleared, {"events": events, "unknown_types": unknown}))
 
-    # The assumed-shape edge of the same event: a clear that declares NO scope at all. The
-    # producer must treat it as global for the named tier -- released across all origins,
-    # counted -- and the emitted event carries no scope claim, because absence failing toward
-    # a guessed zero is exactly how an unobserved shape turns into silent tombstones.
-    unscoped = pack([ts, [{"type": "AllBlocksCleared", "medium": "GPU"}]])
+    # The same event in a batch that declares no dp_rank either: a clear with NO scope in any
+    # dimension. The producer must treat it as global across all of them -- released across
+    # every origin and every tier, counted -- and the emitted event carries no scope claim,
+    # because absence failing toward a guessed zero is how an unobserved shape turns into
+    # silent tombstones.
+    unscoped = pack([ts, [{"type": "AllBlocksCleared"}]])
     events, unknown = derive(msgpack.unpackb(bytes.fromhex(unscoped), raw=False))
     out.append(fx("cleared_scope_undeclared",
-                  "CONSTRUCTED: a clear whose wire shape declares no dp_rank and no group_idx. "
-                  "Scope is transduced as declared -- absent, global for the tier -- never "
-                  "defaulted to zero; the bridge releases the tier across all origins",
+                  "CONSTRUCTED: the same fieldless clear in a batch that declares no dp_rank, so "
+                  "no dimension is scoped. Transduced as declared -- absent, global -- never "
+                  "defaulted to zero; the bridge releases across all origins and all tiers",
                   unscoped, {"events": events, "unknown_types": unknown}))
     return out
 

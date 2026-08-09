@@ -6,15 +6,14 @@
   "msgspec": "0.21.1"
  },
  "name": "cleared_scope_undeclared",
- "note": "CONSTRUCTED: a clear whose wire shape declares no dp_rank and no group_idx. Scope is transduced as declared -- absent, global for the tier -- never defaulted to zero; the bridge releases the tier across all origins",
+ "note": "CONSTRUCTED: the same fieldless clear in a batch that declares no dp_rank, so no dimension is scoped. Transduced as declared -- absent, global -- never defaulted to zero; the bridge releases across all origins and all tiers",
  "source": "s0",
- "wire_hex": "92cb41da99d221898bd19182a474797065b0416c6c426c6f636b73436c6561726564a66d656469756da3475055",
+ "wire_hex": "92cb41da99d221898bd19181a474797065b0416c6c426c6f636b73436c6561726564",
  "expect": {
   "events": [
    {
     "at_ms": 1785153670149.1587,
-    "type": "Cleared",
-    "medium": "GPU"
+    "type": "Cleared"
    }
   ],
   "unknown_types": 0

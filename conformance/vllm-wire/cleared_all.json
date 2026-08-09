@@ -6,17 +6,15 @@
   "msgspec": "0.21.1"
  },
  "name": "cleared_all",
- "note": "CONSTRUCTED, not captured: vLLM 0.26.0 exposes no route that triggers a cache reset, so no live AllBlocksCleared exists to capture. Shape follows the two observed kinds; re-cut from a real one when an engine can be made to emit it",
+ "note": "CONSTRUCTED from the engine's event definition, not captured: vLLM exposes no route that triggers a cache reset, so no live AllBlocksCleared exists to capture. `AllBlocksCleared` declares NO fields, so the only scope it can carry is the batch envelope's dp_rank -- the clear is global over tier and group",
  "source": "s0",
- "wire_hex": "93cb41da99d221898bd19183a474797065b0416c6c426c6f636b73436c6561726564a66d656469756da3475055a967726f75705f6964780000",
+ "wire_hex": "93cb41da99d221898bd19181a474797065b0416c6c426c6f636b73436c656172656400",
  "expect": {
   "events": [
    {
     "at_ms": 1785153670149.1587,
     "dp_rank": 0,
-    "group_idx": 0,
-    "type": "Cleared",
-    "medium": "GPU"
+    "type": "Cleared"
    }
   ],
   "unknown_types": 0
