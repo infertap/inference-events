@@ -263,14 +263,17 @@ FIXTURES = [
       "gap_span": {"narrowed": True, "start_ms": T0 + 200.0, "end_ms": T0 + 300.0}}),
 
     ("seq_across_an_incarnation_boundary_does_not_narrow",
-     "seq is monotonic only within an incarnation, so a bracket spanning a restart "
-     "compares numbers drawn from two different sequences. Narrowing on it would "
-     "exonerate a span nothing observed -- the whole interval stays degraded",
+     "seq is monotonic only within an incarnation, so a bracket spanning a restart compares "
+     "numbers drawn from two different sequences. The jump here is FORWARD and large, which is "
+     "the ordinary shape rather than a corner: an incarnation is a PRODUCER run, and the engine "
+     "publishing underneath it goes on numbering through the restart -- so the distance from 41 "
+     "to 100 is the uncovered boundary itself (5.3), not a loss inside an observed sequence. "
+     "Narrowing on it would exonerate exactly the span nothing observed",
      [segment(RUN1, 0, [
          heartbeat(T0, 10),
          store("i0", "b1", T0 + 100.0, "c1", seq=41)]),
       segment(RUN2, 0, [
-         store("i0", "b2", T0 + 200.0, "c2", seq=3),
+         store("i0", "b2", T0 + 200.0, "c2", seq=100),
          heartbeat(T0 + 300.0, 12, dropped=1)])],
      {"gap_degraded": ["dropped_delta"], "gap_span": {"narrowed": False}}),
 

@@ -1,7 +1,7 @@
 {
  "fixture_version": "v0",
  "name": "seq_across_an_incarnation_boundary_does_not_narrow",
- "note": "seq is monotonic only within an incarnation, so a bracket spanning a restart compares numbers drawn from two different sequences. Narrowing on it would exonerate a span nothing observed -- the whole interval stays degraded",
+ "note": "seq is monotonic only within an incarnation, so a bracket spanning a restart compares numbers drawn from two different sequences. The jump here is FORWARD and large, which is the ordinary shape rather than a corner: an incarnation is a PRODUCER run, and the engine publishing underneath it goes on numbering through the restart -- so the distance from 41 to 100 is the uncovered boundary itself (5.3), not a loss inside an observed sequence. Narrowing on it would exonerate exactly the span nothing observed",
  "segments": [
   [
    {
@@ -64,7 +64,7 @@
     "group_idx": 0,
     "at_ms": 1785153670200.0,
     "content_id": "c2",
-    "seq": 3
+    "seq": 100
    },
    {
     "kind": "heartbeat",

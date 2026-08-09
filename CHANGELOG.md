@@ -1,5 +1,24 @@
 # Changelog
 
+## v1.1 draft 5, 2026-08-09
+
+One fixture re-cut. It did not test what it claimed, which makes it worse than no fixture:
+a reader could drop the rule it exists to pin and still pass.
+
+`reader/seq_across_an_incarnation_boundary_does_not_narrow` put `seq` 41 in the first
+incarnation and 3 in the second. A *backwards* jump, which §5.4's forward-jump condition
+already rejects on its own — so the incarnation guard the fixture was written for never had
+to fire. Confirmed by deleting that guard from a reader and watching the corpus still pass.
+
+The realistic shape is the opposite, and it is the ordinary case rather than a corner: an
+incarnation is a **producer** run, and the engine publishing underneath it goes on numbering
+straight through a producer restart. So the second run resumes at a much HIGHER number, and
+the distance across the boundary is the uncovered window itself (§5.3) rather than a loss
+inside an observed sequence. The fixture now runs 41 → 100, and a reader that narrows on it
+exonerates precisely the span nothing observed.
+
+No text changes and no field changes; `contract_version` stays `1.1`.
+
 ## v1.1 draft 4, 2026-08-09
 
 Corrects §5.9, which was published over-broad. No field changes, no new fields, so
