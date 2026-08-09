@@ -1,5 +1,40 @@
 # Changelog
 
+## v1.1 draft 4, 2026-08-09
+
+Corrects §5.9, which was published over-broad. No field changes, no new fields, so
+`contract_version` stays `1.1`.
+
+- **The prohibition is on UNQUALIFIED counts.** As written, §5.9 forbade presenting "a count
+  of `store` records, or a sum of `n_tokens` over them" as insertions — which reads as
+  forbidding *every* aggregate over store records, including the one figure an `unlabelled`
+  stream still fully supports. A reuse announcement describes a block the engine found
+  **resident**, so it cannot follow an observed close of that block: the residency would have
+  had to reopen unobserved, which is a lost record and therefore already a detected gap under
+  §5.4. A recomputation figure — stores conditioned on an observed prior `evict` or `clear` —
+  is safe under any declaration, and a reader MAY compute it.
+
+- **The converse case gains its own MUST NOT.** Conditioning on *absent* prior residency is
+  exactly where a reuse announcement and a first insertion are indistinguishable, because the
+  block may have been resident since before observation began. A reader MUST NOT count such a
+  store as a first insertion or a cold miss.
+
+  Stated separately because the error does not decay. It is tempting to expect it to expire
+  once the cache has turned over — but a block that is never evicted is never re-announced,
+  and the hottest shared prefix in a fleet is the block least likely to be evicted. Left
+  unstated, the miscount concentrates on exactly the traffic that matters most, and reports a
+  cache as **less** effective than it is.
+
+Three fixtures land with them, and the two declarations are pinned against each other on the
+same shape of stream so a reader that answers both alike fails one.
+
+**Verified across two engines.** The reference producer declares `unlabelled`: it builds a
+prefix-cache hit and a fresh insertion through one shared builder, deliberately, so both
+"emit identical event shapes for downstream consumers". A second engine's radix cache emits
+`BlockStored` only for the newly inserted tail — its matched prefix increments an internal
+counter and reaches no wire — which is `none`. Two engines, two states, from source. The
+declaration is a real cross-engine axis rather than one engine's wart.
+
 ## v1.1 draft, 2026-08-09
 
 Additive: four new optional fields, so the minor version increments and

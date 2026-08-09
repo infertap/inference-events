@@ -73,6 +73,19 @@ Two families so far:
   nonempty is indeterminate; a fresh incarnation at seq zero is a restart (spec 5.2),
   and a sequence beginning above zero is absence outside observation (spec 5.6), so
   neither may appear in the list.
+- **insertions / recompute / first_insertion**: what a `store` record may be counted
+  into (spec 5.9), which depends on the producer's `reuse_reporting` declaration. Three
+  families because the qualifications fall on opposite sides: the unqualified count is
+  refused under `unlabelled`, a figure conditioned on an observed prior CLOSE survives it
+  (a reuse describes a resident block, so it cannot follow a close it did not reopen),
+  and a figure conditioned on ABSENT prior residency does not (that is exactly where a
+  reuse and a first insertion are indistinguishable). Absence of the declaration, and a
+  value this version does not define, both read as `unlabelled`.
+- **gap_span**: the narrowing a `seq` permits (spec 5.4). The verdict is whether a
+  reader may narrow the degraded span to the bracket around the discontinuity, and its
+  endpoints when it may. Narrowing is the only weakening 5.4 allows, so the two fixtures
+  that must NOT narrow -- a bracket spanning an incarnation boundary, a bracket with a
+  seq missing on one side -- are the ones that fail an over-eager reader.
 
 The clock-domain fixtures (spec 2.6, `clock_*`) declare NO family of their own,
 deliberately: 2.6 adds no verdict, it constrains how every other verdict may be
@@ -174,6 +187,11 @@ def heartbeat(at, msgs, source="i0", dropped=0, sources=None, canary=None,
         for e in r["endpoints"]:
             e["topic"] = topic
     return r
+
+
+def figure(countable, records=None, tokens=None):
+    """One 5.9 figure: may a reader present it, and if so what is it."""
+    return {"countable": countable, "records": records, "tokens": tokens}
 
 
 def insertions(countable, records=None, tokens=None):
@@ -318,6 +336,44 @@ FIXTURES = [
          heartbeat(T0, 10, reuse_reporting="sampled_at_source"),
          store("i0", "b1", T0 + 100.0, "c1")])],
      {"insertions": insertions(False)}),
+
+    ("reuse_unlabelled_still_permits_a_recompute_figure",
+     "the qualified case, and the one an over-broad reading of 5.9 would have forbidden. A "
+     "figure counting only stores that FOLLOW an observed close cannot admit a reuse "
+     "announcement: a reuse describes a resident block, and residency ended at that close. For "
+     "the announcement to qualify the residency would have had to reopen unobserved, which is a "
+     "lost record and so a detected gap. The unqualified count is still refused",
+     [segment(RUN1, 0, [
+         heartbeat(T0, 10, reuse_reporting="unlabelled"),
+         store("i0", "b1", T0 + 100.0, "c1"),
+         evict("i0", "b1", T0 + 200.0, "c1"),
+         store("i0", "b1", T0 + 300.0, "c1"),
+         store("i0", "b2", T0 + 400.0, "c2")])],
+     {"insertions": insertions(False),
+      "recompute": figure(True, records=1, tokens=16)}),
+
+    ("reuse_unlabelled_forbids_a_first_insertion_figure",
+     "the unsafe qualification, and the error that does not decay. A store for a block whose "
+     "residency was never observed is exactly where a reuse announcement and a first insertion "
+     "are indistinguishable -- the block may have been resident since before observation began. "
+     "A reader might expect this to expire once the cache turns over, but a block that is never "
+     "evicted is never re-announced, and the hottest shared prefix is the one least likely to be "
+     "evicted. Indeterminate, never cold",
+     [segment(RUN1, 0, [
+         heartbeat(T0, 10, reuse_reporting="unlabelled"),
+         store("i0", "b1", T0 + 100.0, "c1"),
+         store("i0", "b2", T0 + 200.0, "c2")])],
+     {"first_insertion": figure(False)}),
+
+    ("first_insertion_is_countable_where_reuse_is_not_announced",
+     "the same stream under a producer whose engine never announces reuse as a store: absence "
+     "of prior residency IS evidence of a first insertion there, because nothing else could "
+     "have produced the record",
+     [segment(RUN1, 0, [
+         heartbeat(T0, 10, reuse_reporting="none"),
+         store("i0", "b1", T0 + 100.0, "c1"),
+         store("i0", "b2", T0 + 200.0, "c2")])],
+     {"first_insertion": figure(True, records=2, tokens=32)}),
 
     ("a_window_takes_the_weakest_reuse_declaration_it_contains",
      "declarations are per producer and a window may span several. Mixing them would "

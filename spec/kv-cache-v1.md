@@ -786,16 +786,41 @@ follows the declaration, per holder and per window:
   insertions and from any sum of inserted tokens. They remain facts, and a reader MAY use them —
   a reuse is direct evidence that a resident block was matched, which nothing else in this stream
   states.
-- **`"unlabelled"`**, **absent**, or **unrecognized** — a reader MUST NOT present a count of
-  `store` records, or a sum of `n_tokens` over them, as a quantity of insertions or of inserted
-  tokens. It MAY still report residency, identity and duplication, none of which counts a record
-  twice for being announced twice.
+- **`"unlabelled"`**, **absent**, or **unrecognized** — a reader MUST NOT present an
+  **unqualified** count of `store` records, or an unqualified sum of `n_tokens` over them, as a
+  quantity of insertions or of inserted tokens. It MAY still report residency, identity and
+  duplication, none of which counts a record twice for being announced twice.
 
 The failure this forbids is not a small one and it does not look like an error. Where reuse is
 announced and unlabelled, summing `store` records counts a block once per announcement, so the
 figure rises with how *effective* the cache is — best on exactly the fleet with least waste. A
 reader that reports it as inserted tokens has inverted the measurement while every input was
 correct.
+
+**"Unqualified" is doing work, and the two qualified cases fall on opposite sides.** A reuse
+announcement describes a block the engine found **resident**. That single fact decides both:
+
+- **Conditioning on an observed prior close is SAFE, and a reader MAY do it under any
+  declaration.** A figure counting only those stores that follow an observed `evict` or `clear`
+  of the same block — a recomputation figure — cannot admit a reuse announcement, because a
+  reuse describes a resident block and residency ended at that close. For the announcement to
+  qualify, the residency would have had to reopen unobserved, which is a lost record and
+  therefore a detected gap under §5.4. Either the store is a genuine recomputation or the window
+  is already degraded. [^reuseclose]
+
+- **Conditioning on ABSENT prior residency is UNSAFE, and a reader MUST NOT do it.** A store for
+  a block whose residency this reader never observed is exactly where a reuse announcement and a
+  first insertion are indistinguishable: the block may have been resident since before
+  observation began. A reader MUST NOT treat the absence of prior residency as evidence that the
+  block was not already cached, and MUST NOT count such a store as a first insertion or a cold
+  miss. It is indeterminate, not cold. [^reusecold]
+
+  This is §5.6's lower-bound rule reaching one field further: absence is exact only within an
+  observed sequence. It is worth stating separately because the error does not decay. A reader
+  might expect it to expire once the cache has turned over — but a block that is never evicted is
+  never re-announced, and the hottest shared prefix in a fleet is precisely the block least likely
+  to be evicted. Left unstated, the miscount would concentrate on the traffic that matters most,
+  and would report a cache as **less** effective than it is.
 
 **A window MUST take the weakest declaration it contains.** Declarations are per producer, a window
 may span several, and a reader that mixed them would apply `"none"` to records from a producer that
@@ -941,6 +966,15 @@ Each note names the fixture that would fail an implementation violating the requ
     `telemetry/reuse_labelled_rides_the_store_it_describes` pins the per-record field.
     `telemetry/sliding_window_is_carried_where_the_group_declares_one` pins
     `spec_sliding_window` beside its `spec_kind`.
+
+[^reuseclose]: `reader/reuse_unlabelled_still_permits_a_recompute_figure`: an unlabelled
+    stream whose unqualified count is refused while the figure conditioned on an observed close
+    is computed. It fails a reader that reads §5.9 as forbidding every aggregate over `store`
+    records — which would surrender the one recomputation figure the stream still supports.
+
+[^reusecold]: `reader/reuse_unlabelled_forbids_a_first_insertion_figure`, against
+    `reader/first_insertion_is_countable_where_reuse_is_not_announced`: the same shape of stream
+    under the two declarations, so a reader that answers both alike fails one of them.
 
 [^reuseread]: `reader/reuse_*`: one fixture per declaration state —
     `reuse_none_makes_every_store_an_insertion`,
