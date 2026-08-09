@@ -1,7 +1,7 @@
 {
  "fixture_version": "v0",
- "name": "gap_a_dropped_delta_between_heartbeats_degrades_the_window",
- "note": "the completeness clock catches inbound loss: cumulative dropped moves from 0 to 3 between two heartbeats, so the span lost messages and the loss cannot be localized inside it (spec 5.4). The store rides along so the stream carries cache facts the gap taints",
+ "name": "a_bracket_missing_seq_does_not_narrow",
+ "note": "narrowing needs both sides. One record carrying no seq leaves no bracket to narrow to, and a reader that narrowed to the nearest numbered pair would be choosing a span the stream never delimited",
  "segments": [
   [
    {
@@ -12,18 +12,8 @@
     "segment_seq": 0
    },
    {
-    "kind": "agent_start",
-    "at_ms": 1785153670000.0,
-    "agent_version": "0.2.0",
-    "egress": "raw",
-    "endpoint_count": 1,
-    "heartbeat_secs": 60,
-    "max_segment_secs": 300,
-    "max_payload_bytes": 1048576
-   },
-   {
     "kind": "heartbeat",
-    "at_ms": 1785153730000.0,
+    "at_ms": 1785153670000.0,
     "msgs_seen": 10,
     "dropped": 0,
     "oversized": 0,
@@ -39,7 +29,7 @@
       "endpoint": "tcp://i0:5557",
       "msgs_seen": 10,
       "dropped": 0,
-      "last_msg_at_ms": 1785153730000.0
+      "last_msg_at_ms": 1785153670000.0
      }
     ]
    },
@@ -51,17 +41,41 @@
     "tier": "GPU",
     "dp_rank": 0,
     "group_idx": 0,
-    "at_ms": 1785153760000.0,
-    "content_id": "c1"
+    "at_ms": 1785153670100.0,
+    "content_id": "c1",
+    "seq": 41
+   },
+   {
+    "kind": "store",
+    "instance_id": "i0",
+    "block_id": "b2",
+    "n_tokens": 16,
+    "tier": "GPU",
+    "dp_rank": 0,
+    "group_idx": 0,
+    "at_ms": 1785153670200.0,
+    "content_id": "c2"
+   },
+   {
+    "kind": "store",
+    "instance_id": "i0",
+    "block_id": "b3",
+    "n_tokens": 16,
+    "tier": "GPU",
+    "dp_rank": 0,
+    "group_idx": 0,
+    "at_ms": 1785153670300.0,
+    "content_id": "c3",
+    "seq": 44
    },
    {
     "kind": "heartbeat",
-    "at_ms": 1785153790000.0,
-    "msgs_seen": 20,
-    "dropped": 3,
+    "at_ms": 1785153670400.0,
+    "msgs_seen": 13,
+    "dropped": 1,
     "oversized": 0,
     "unknown_types": 0,
-    "events_ingested": 20,
+    "events_ingested": 13,
     "content_unresolved": 0,
     "content_bridge_entries": 0,
     "content_bridge_evicted": 0,
@@ -70,9 +84,9 @@
      {
       "source": "i0",
       "endpoint": "tcp://i0:5557",
-      "msgs_seen": 20,
-      "dropped": 3,
-      "last_msg_at_ms": 1785153790000.0
+      "msgs_seen": 13,
+      "dropped": 1,
+      "last_msg_at_ms": 1785153670400.0
      }
     ]
    }
@@ -81,6 +95,9 @@
  "expect": {
   "gap_degraded": [
    "dropped_delta"
-  ]
+  ],
+  "gap_span": {
+   "narrowed": false
+  }
  }
 }

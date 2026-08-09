@@ -53,6 +53,12 @@ def record(ev):
         r["dp_rank"] = ev.get("dp_rank", 0)
         r["group_idx"] = ev.get("group_idx", 0)
     r["at_ms"] = ev["at_ms"]
+    # The transport sequence of the MESSAGE this event arrived in. It rides every cache
+    # record kind, is shared by every record derived from one message, and is omitted
+    # entirely by a producer whose transport does not number its messages -- never
+    # synthesized, because a manufactured sequence is a gap detector that cannot fire.
+    if ev.get("seq") is not None:
+        r["seq"] = ev["seq"]
 
     if ev["type"] == "Stored":
         r["kind"] = "store"
@@ -75,6 +81,15 @@ def record(ev):
             r["lora_name"] = ev["lora_name"]
         if ev.get("spec_kind") is not None:
             r["spec_kind"] = ev["spec_kind"]
+        # the group's sliding-window size, where the engine declares one: names the
+        # geometry that decides which blocks an engine skips, and absent where it said
+        # nothing -- like spec_kind and unlike tier
+        if ev.get("spec_sliding_window") is not None:
+            r["spec_sliding_window"] = ev["spec_sliding_window"]
+        # only ever present under reuse_reporting "labelled": this record reports a block
+        # already cached rather than a fresh insertion (spec 2.3)
+        if ev.get("reused") is not None:
+            r["reused"] = ev["reused"]
         # absent where the publisher declared nothing, like spec_kind and unlike tier
         if ev.get("locality") is not None:
             r["locality"] = ev["locality"]
@@ -145,6 +160,36 @@ H2 = 12955354968414679641
 H3 = 16032592773066255487
 
 FIXTURES = [
+    ("seq_rides_every_cache_record",
+     "the transport sequence of the message an event arrived in, carried onto the records "
+     "so a reader can localize a loss to a bracket instead of to a whole heartbeat "
+     "interval. Every record derived from one message shares its number -- seq identifies "
+     "a MESSAGE, not a record -- and it rides evicts and clears exactly as it rides stores",
+     [stored("a", H1, T0, seq=41), stored("a", H2, T0, parent_hash=H1, seq=41),
+      removed("a", H1, T0 + 100.0, seq=42),
+      cleared("a", T0 + 200.0, seq=43)]),
+
+    ("seq_absent_where_the_transport_does_not_number",
+     "a producer whose transport has no sequence omits the field rather than synthesizing "
+     "one. A manufactured number is a gap detector that can never fire, which is worse "
+     "than the absent field a reader can see and account for",
+     [stored("a", H1, T0), removed("a", H1, T0 + 100.0)]),
+
+    ("sliding_window_is_carried_where_the_group_declares_one",
+     "the group's sliding-window size, named beside its spec_kind. It is the geometry "
+     "that decides which blocks an engine skips, so a consumer reasoning about a "
+     "non-contiguous run needs it; absent where the engine declared nothing, like "
+     "spec_kind and unlike tier",
+     [stored("a", H1, T0, spec_kind="sliding_window", spec_sliding_window=4096),
+      stored("a", H2, T0 + 100.0, parent_hash=H1)]),
+
+    ("reuse_labelled_rides_the_store_it_describes",
+     "where a producer can tell a reuse announcement from a fresh insertion, it says so "
+     "on the record. The reused store is a fact like any other -- same block, same "
+     "identity, same chain -- carrying one more field, and 5.9 governs what a reader may "
+     "sum it into",
+     [stored("a", H1, T0), stored("a", H1, T0 + 100.0, reused=True)]),
+
     ("prefix_chain",
      "a root store and its chained child: parent_id is ABSENT at the root and present on the "
      "child, so the prefix edge reaches the aggregator intact",

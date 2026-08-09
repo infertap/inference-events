@@ -55,7 +55,7 @@ def segment_open(seq, at_ms):
     """
     r = base("segment_open", at_ms)
     # the segment declares which contract it conforms to, in-band, once
-    r["contract_version"] = "1.0"
+    r["contract_version"] = "1.1"
     r["incarnation"] = INCARNATION
     r["segment_seq"] = seq
     return r

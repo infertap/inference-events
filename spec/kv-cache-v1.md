@@ -6,7 +6,7 @@ A wire and file contract for observing key/value cache behaviour in inference en
 - [2. Record format](#2-record-format): [encoding](#21-encoding) · [common fields](#22-common-fields) · [cache records](#23-cache-records) · [lifecycle records](#24-producer-lifecycle-records) · [delivery records](#25-delivery-records) · [clock domains](#26-clock-domains)
 - [3. Identity](#3-identity): [two spaces](#31-two-identity-spaces) · [scope](#32-scope) · [key epochs](#33-key-epochs) · [the canary](#34-the-canary-and-fleet-key-consistency)
 - [4. Delivery layout](#4-delivery-layout): [sealed segments](#41-sealed-segments) · [incarnations](#42-incarnations) · [orphans](#43-orphans)
-- [5. Continuity and coverage](#5-continuity-and-coverage): the reader's conformance floor, §5.1–§5.8
+- [5. Continuity and coverage](#5-continuity-and-coverage): the reader's conformance floor, §5.1–§5.9
 - [6. Versioning](#6-versioning): [`contract_version`](#61-contract_version) · [the mixed-fleet law](#62-the-mixed-fleet-law)
 - [7. Out of scope](#7-out-of-scope)
 - [8. Conformance checklists](#8-conformance-checklists-informative) (informative)
@@ -36,7 +36,7 @@ writes it. An engine MAY emit records natively and be the producer; an adapter o
 engine's native telemetry MAY be the producer for it. The `vllm-wire` corpus documents one such
 adapter mapping, from a real engine's native events to conforming records.
 
-**Status.** v1 draft. Verified against a reference producer's code and conformance corpora on
+**Status.** v1.1 draft. Verified against a reference producer's code and conformance corpora on
 2026-08-06.
 
 **Conventions.** Normative requirements use the key words of BCP 14 (RFC 2119, as clarified by
@@ -135,6 +135,9 @@ A block entered a cache.
 | `lora_id` | integer | optional | adapter identifier |
 | `lora_name` | string | optional | adapter name |
 | `spec_kind` | string | optional | attention kind, for example `full_attention` |
+| `spec_sliding_window` | integer | optional | the sliding-window size of this block's cache group, where the engine declares one |
+| `reused` | boolean | optional | this record reports a block already cached rather than a fresh insertion. Only under `reuse_reporting: "labelled"` (§2.4) |
+| `seq` | integer | optional | transport sequence of the message that carried this event (below) |
 
 **Parent has three states, and a reader MUST distinguish all three.** `parent_id` present names the
 parent. `parent_id` absent asserts that this block is a **root**, meaning it begins a prefix chain.
@@ -151,6 +154,39 @@ about locality. [^locality]
 **Runs.** An engine event MAY describe a contiguous run of consecutive blocks in which each block's
 parent is its predecessor. A producer MUST emit one `store` record per block with the chain already
 resolved. A reader never observes runs. [^run]
+
+**`seq` localizes a loss.** Where the producer's transport numbers its messages, `seq` carries that
+number for the message this record's event arrived in. It is monotonic within
+`(instance_id, incarnation)` and shared by every record derived from one message, so it identifies
+a message rather than a record. A producer that has no sequenced transport MUST omit it rather than
+synthesize one. Its use is §5.4.
+
+**A `store` does not always mean an insertion, and only the producer knows which.** Some engines
+announce a block *reused* from cache with the same event they use to announce one newly inserted,
+and emit them in a shape a consumer cannot tell apart. A reader that sums `n_tokens` over `store`
+records on such a stream is not measuring inserted tokens — it is measuring inserted tokens plus
+every reuse of them, which climbs with cache *effectiveness*.
+
+The producer declares which case it is in, once, via `reuse_reporting` (§2.4), and the three states
+are not collapsible:
+
+- **`"none"`** — this engine does not announce reuse as a `store`. Every `store` is an insertion.
+- **`"labelled"`** — it does, and the producer can tell them apart. Each such record carries
+  `reused: true`, and a producer MUST NOT emit `reused` under any other declaration.
+- **`"unlabelled"`** — it does, and the producer cannot tell them apart. No record can say which it
+  is, because no fact distinguishes them.
+
+The set is closed. Like every closed set here it is carried as a string, because JSON has no enum
+type and a field is one type (§2.2) — the same shape as `egress`.
+
+**Absence of the declaration is not `"none"`, and neither is a value a reader does not recognize.**
+A producer that does not declare has not told the reader that its stores are insertions, and a
+reader MUST NOT assume the safe-sounding case from silence — that is the one reading that turns an
+unknown into a measurement. A reader MUST treat an unrecognized `reuse_reporting` value exactly as
+it treats `"unlabelled"`, never as `"none"` and never by ignoring the field: a value this contract
+does not define was added by a later version to describe a case the reader cannot model, so the
+one thing known about it is that the reader does not know. This is the rule §5.3 already applies to
+an unknown `scope`, one field over. §5.9 states the obligation under each state. [^reuse]
 
 *Example (informative), from `telemetry/lora_labelled`. The `gpu`, `vllm_version` and
 `event_schema_version` fields are provenance (§2.2) and ride every record in these examples:*
@@ -170,7 +206,7 @@ A block left a cache.
 |---|---|---|---|
 | `kind` | `"evict"` | required | |
 | `at_ms`, `instance_id`, `block_id` | | required | as `store` |
-| `dp_rank`, `group_idx`, `content_id`, `locality`, `tier` | | optional | as `store` |
+| `dp_rank`, `group_idx`, `content_id`, `locality`, `tier`, `seq` | | optional | as `store` |
 
 `content_id` on an evict is resolved by the producer at capture time, through state built when
 the block was stored. Because `block_id` rides both stores and evicts, the stream also lets a
@@ -200,6 +236,7 @@ Every block in a named scope left at once.
 | `dp_rank` | integer | optional | the data parallel worker the clear applies to; **absent means the wire declared none and the clear is global across workers** (§3.2 and the note below) |
 | `group_idx` | integer | optional | as `dp_rank`, for cache groups |
 | `tier` | string | optional | storage tier the clear applied to; **absent means the clear is global across tiers** |
+| `seq` | integer | optional | as `store` |
 
 An absent scope field on a `clear` **declares the clear unbounded** in that dimension; it is not
 an unknown value. (A block record's absent `tier` is the opposite: a per-block fact the producer
@@ -254,6 +291,7 @@ MAY observe several instances.
 | `max_payload_bytes` | integer | required | largest inbound engine message accepted |
 | `key_epoch` | integer | conditional | present when identities are keyed (§3.3) |
 | `canary` | string | conditional | present when identities are keyed (§3.4) |
+| `reuse_reporting` | string | optional | as `heartbeat` |
 
 *Example (informative), from `lifecycle/records`:*
 
@@ -284,11 +322,29 @@ two heartbeats describes the span between them.
 | `publisher_restarts` | integer | required | engine-side restarts observed |
 | `endpoints` | array | required | per-subscription statistics, below |
 | `canary` | string | conditional | present when identities are keyed (§3.4) |
+| `reuse_reporting` | string | optional | `none` \| `labelled` \| `unlabelled` — whether this producer's engine announces cache reuse as a `store`, and whether it can be told apart (§2.3) |
 | `noraw_scanned` | integer | optional | values checked by the producer's egress guard |
 | `rss_bytes` | integer | optional | producer resident memory |
 
 Each `endpoints` element carries `source` (string), `endpoint` (string), `msgs_seen` (integer),
-`dropped` (integer), and `last_msg_at_ms` (number, optional).
+`dropped` (integer), `last_msg_at_ms` (number, optional), and `topic` (string, optional).
+
+**`reuse_reporting` rides all three lifecycle kinds**, exactly as the canary does and for the
+same reason (§3.4): an analysis window need not contain a start record, and a declaration a
+reader cannot reach is one it cannot apply. A producer MUST NOT vary it within an incarnation — it describes the
+engine, not the traffic.
+
+**`topic` is relayed verbatim and unparsed.** Where the transport names a channel, a producer MUST
+carry that name exactly as received and MUST NOT interpret, normalize or split it. Deployments
+encode real identity there — several conventions put the served model and the pod in the topic —
+but the conventions are the deployment's, not this contract's, so recognizing one is a reader's
+business and a producer that parsed it would be publishing an interpretation as a fact.
+
+A reader MAY recognize a topic under a **named, versioned convention** matched at exact arity, and
+MUST refuse rather than extract heuristically: a convention that does not match yields nothing, and
+a partial match yields nothing. Refusal is the only failure mode. A reader that recognizes nothing
+still conforms. Verbatim relay makes recognition retroactive — a convention added later re-derives
+its labels over archived records by ordinary re-analysis. [^topic]
 
 `endpoints[].source` MUST equal the `instance_id` that the producer emits for that subscription's
 cache records. It is the only link between a lifecycle record and the instances a producer covers.
@@ -329,6 +385,7 @@ nothing seen yet, so nothing is stamped:*
 | `content_bridge_entries` | integer | required | as `heartbeat` |
 | `content_bridge_evicted` | integer | required | as `heartbeat` |
 | `publisher_restarts` | integer | required | as `heartbeat` |
+| `reuse_reporting` | string | optional | as `heartbeat` |
 | `endpoints` | array | required | as `heartbeat` |
 | `canary` | string | conditional | present when identities are keyed (§3.4) |
 
@@ -409,7 +466,7 @@ The first record of every segment, written before any other record in that segme
 
 ```json
 {"gpu": "fixture", "vllm_version": "0.26.0", "event_schema_version": "vllm-0.26.0-map",
- "kind": "segment_open", "at_ms": 1785153670000.0, "contract_version": "1.0",
+ "kind": "segment_open", "at_ms": 1785153670000.0, "contract_version": "1.1",
  "incarnation": "1785153670000-4242", "segment_seq": 0}
 ```
 
@@ -659,6 +716,20 @@ classify the facts within it as though the window were complete. Detected gaps i
 `segment_seq` within an incarnation, a nonzero `dropped` delta between heartbeats, and a
 `segments_dropped` record overlapping the window. [^gap]
 
+**`seq` may narrow the degraded span, and only under both conditions.** A `dropped` delta localizes
+a loss no better than the interval between two heartbeats, so a single lost message degrades every
+fact in that interval. Where records carry `seq` (§2.3), a reader MAY instead degrade only the span
+between the two records bracketing the discontinuity — but only where **both** bracketing records
+carry `seq` and share the same `(instance_id, incarnation)`. Otherwise it degrades the whole
+interval as before.
+
+Narrowing is the only weakening this section permits, and the conditions are what make it safe: a
+`seq` is monotonic only within an incarnation, so a bracket spanning a restart compares numbers from
+two different sequences and would silently exonerate a window nothing observed. Absent `seq` on
+either side, the reader has no bracket at all. A reader MUST NOT narrow past the observed bracket to
+the message itself: the records derived from one message share its `seq`, so the bracket is the
+finest resolution the stream carries. [^seq]
+
 ### 5.5 Malformed input
 
 A reader MUST accept an unparseable **final** line of a segment as an expected artifact of a producer
@@ -703,6 +774,32 @@ unexplained-departure rule in §2.4 is unspecifiable.
 A reader MUST treat a producer as **stale** when the interval since its last record exceeds the
 larger of the two declared bounds, plus an implementation-defined allowance. How a producer decides
 to seal within `max_segment_secs` is out of scope (§7); the bound itself is contract. [^liveness]
+
+### 5.9 A store count is an insertion count only where the producer says so
+
+`reuse_reporting` (§2.4) tells a reader what a `store` record means on this stream. The obligation
+follows the declaration, per holder and per window:
+
+- **`"none"`** — a reader MAY treat every `store` as an insertion: count them, and sum `n_tokens`
+  over them as inserted tokens.
+- **`"labelled"`** — a reader MUST exclude records carrying `reused: true` from any count of
+  insertions and from any sum of inserted tokens. They remain facts, and a reader MAY use them —
+  a reuse is direct evidence that a resident block was matched, which nothing else in this stream
+  states.
+- **`"unlabelled"`**, **absent**, or **unrecognized** — a reader MUST NOT present a count of
+  `store` records, or a sum of `n_tokens` over them, as a quantity of insertions or of inserted
+  tokens. It MAY still report residency, identity and duplication, none of which counts a record
+  twice for being announced twice.
+
+The failure this forbids is not a small one and it does not look like an error. Where reuse is
+announced and unlabelled, summing `store` records counts a block once per announcement, so the
+figure rises with how *effective* the cache is — best on exactly the fleet with least waste. A
+reader that reports it as inserted tokens has inverted the measurement while every input was
+correct.
+
+**A window MUST take the weakest declaration it contains.** Declarations are per producer, a window
+may span several, and a reader that mixed them would apply `"none"` to records from a producer that
+never claimed it. [^reuseread]
 
 ## 6. Versioning
 
@@ -831,6 +928,32 @@ Each note names the fixture that would fail an implementation violating the requ
 
 [^run]: `vllm-wire/stored_fanout` and `vllm-wire/run_with_skipped_blocks` for the input shape,
     `telemetry/prefix_chain` for the resolved output.
+
+[^seq]: `telemetry/seq_rides_every_cache_record` pins the field on all three cache kinds and
+    pins that records from one message share its number; `telemetry/seq_absent_where_the_transport_does_not_number`
+    pins the omission. The reader half is `reader/seq_narrows_the_degraded_span_to_its_bracket`,
+    against the two fixtures that must NOT narrow —
+    `reader/seq_across_an_incarnation_boundary_does_not_narrow` and
+    `reader/a_bracket_missing_seq_does_not_narrow` — which together fail a reader that
+    narrows on an unsound bracket, the only direction in which narrowing is unsafe.
+
+[^reuse]: `lifecycle/records` carries the declaration on all three kinds;
+    `telemetry/reuse_labelled_rides_the_store_it_describes` pins the per-record field.
+    `telemetry/sliding_window_is_carried_where_the_group_declares_one` pins
+    `spec_sliding_window` beside its `spec_kind`.
+
+[^reuseread]: `reader/reuse_*`: one fixture per declaration state —
+    `reuse_none_makes_every_store_an_insertion`,
+    `reuse_labelled_excludes_the_reused_records`,
+    `reuse_unlabelled_forbids_an_insertion_count` — beside the three that fail a reader
+    which treats silence or novelty as permission: `reuse_undeclared_is_not_none`,
+    `reuse_unrecognized_reads_as_unlabelled`, and
+    `a_window_takes_the_weakest_reuse_declaration_it_contains`.
+
+[^topic]: `lifecycle/records` carries a topic on the endpoint that has seen traffic and none
+    on the endpoint that has not, so a producer that synthesized one fails. No fixture pins a
+    recognition convention, deliberately: recognition is a reader's business and this contract
+    defines none.
 
 [^clear]: `telemetry/clear_is_scope_level`, with producer-side input `vllm-wire/cleared_all`.
 

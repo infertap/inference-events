@@ -1,5 +1,34 @@
 # Changelog
 
+## v1.1 draft, 2026-08-09
+
+Additive: four new optional fields, so the minor version increments and
+`contract_version` becomes `1.1` (§6.1). No existing field changes meaning.
+
+- **`seq` on cache records** — the transport sequence of the message an event arrived in,
+  shared by every record derived from one message. §5.4 gains the narrowing rule it
+  enables: a `dropped` delta localizes a loss no better than one heartbeat interval, and
+  `seq` puts the discontinuity between two observed numbers. Narrowing is permitted only
+  where **both** bracketing records carry `seq` in one incarnation — a bracket spanning a
+  restart compares two different sequences, and would exonerate a span nothing observed.
+
+- **`reuse_reporting` on the lifecycle records, `reused` on `store`, and §5.9.** Some
+  engines announce a block *reused* from cache with the same event they use for one newly
+  inserted, in a shape a consumer cannot tell apart. Summing `store` records on such a
+  stream counts a block once per announcement, so the figure climbs with how *effective*
+  the cache is — highest on the fleet with the least waste. The producer declares which of
+  three states it is in; §5.9 states the reader's obligation under each. Absence is not
+  `"none"`, and neither is a value a later version defines: both read as `"unlabelled"`.
+
+- **`spec_sliding_window` on `store`** — the group's window size beside its `spec_kind`.
+  It is the geometry deciding which blocks an engine skips, which a consumer reasoning
+  about a non-contiguous run needs.
+
+- **`topic` on `endpoints[]`** — the transport channel name, relayed verbatim and unparsed.
+  Deployments encode real identity there, but the conventions are the deployment's, so
+  recognition is a reader's business, matched at exact arity with refusal as its only
+  failure mode. Verbatim relay makes recognition retroactive over archived records.
+
 ## v1 draft, 2026-08-09
 
 Corrections, no version change: nothing here alters a requirement or the meaning of a

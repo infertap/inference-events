@@ -106,18 +106,25 @@ def segment(incarnation, seq, records):
     header = {
         "kind": "segment_open",
         "at_ms": T0 - 1000.0,
-        "contract_version": "1.0",
+        "contract_version": "1.1",
         "incarnation": incarnation,
         "segment_seq": seq,
     }
     return [header] + records
 
 
-def store(instance, block, at, content=None, dp_rank=0):
+def store(instance, block, at, content=None, dp_rank=0, seq=None, reused=None):
     r = {"kind": "store", "instance_id": instance, "block_id": block, "n_tokens": 16,
          "tier": "GPU", "dp_rank": dp_rank, "group_idx": 0, "at_ms": at}
     if content is not None:
         r["content_id"] = content
+    # The transport sequence of the MESSAGE this event arrived in (spec 2.3): shared by
+    # every record derived from one message, monotonic only within one incarnation.
+    if seq is not None:
+        r["seq"] = seq
+    # Only ever emitted under reuse_reporting: "labelled" (spec 2.3).
+    if reused is not None:
+        r["reused"] = reused
     return r
 
 
@@ -146,18 +153,36 @@ def _envelope(at, msgs, sources):
                           for s in sources]}
 
 
-def heartbeat(at, msgs, source="i0", dropped=0, sources=None, canary=None):
+def heartbeat(at, msgs, source="i0", dropped=0, sources=None, canary=None,
+              reuse_reporting=None, topic=None):
     """The completeness clock: cumulative counters, required-at-zero (spec 2.4).
     `sources` names several observed instances on one producer (spec 2.4:
     endpoints[].source is the incarnation-to-instances mapping 5.1 rests on);
-    `canary` is the key identity riding every heartbeat (spec 3.4)."""
+    `canary` is the key identity riding every heartbeat (spec 3.4);
+    `reuse_reporting` is what a `store` MEANS on this stream (spec 2.3/5.9), riding every
+    heartbeat for the canary's reason -- a window need not contain a start record; `topic`
+    is the transport channel name, relayed verbatim and unparsed (spec 2.4)."""
     r = {"kind": "heartbeat", **_envelope(at, msgs, sources or [source])}
     if dropped:
         r["dropped"] = dropped
         r["endpoints"][0]["dropped"] = dropped
     if canary:
         r["canary"] = canary
+    if reuse_reporting is not None:
+        r["reuse_reporting"] = reuse_reporting
+    if topic is not None:
+        for e in r["endpoints"]:
+            e["topic"] = topic
     return r
+
+
+def insertions(countable, records=None, tokens=None):
+    """The 5.9 verdict: may a reader present a count of stores as a count of insertions,
+    and if so what is it. Derived from the declaration, never from the records: under
+    "none" every store is an insertion; under "labelled" the reused ones are excluded;
+    under "unlabelled", absence, or a value this version does not define, no such figure
+    exists and a reader must not present one."""
+    return {"countable": countable, "records": records, "tokens": tokens}
 
 
 def segments_dropped(run, first, last, at):
@@ -203,6 +228,108 @@ def audit_verdict(**per_instance):
 
 
 FIXTURES = [
+    # --- 5.4: seq narrows a degraded span, and only where the bracket is sound ----------
+    ("seq_narrows_the_degraded_span_to_its_bracket",
+     "a dropped delta localizes a loss no better than the interval between two "
+     "heartbeats. With seq on the records, the discontinuity sits between two observed "
+     "numbers in one incarnation, so only that bracket is degraded and the facts outside "
+     "it survive a loss they cannot have been part of",
+     [segment(RUN1, 0, [
+         heartbeat(T0, 10),
+         store("i0", "b1", T0 + 100.0, "c1", seq=41),
+         store("i0", "b2", T0 + 200.0, "c2", seq=42),
+         store("i0", "b3", T0 + 300.0, "c3", seq=44),
+         store("i0", "b4", T0 + 400.0, "c4", seq=45),
+         heartbeat(T0 + 500.0, 14, dropped=1)])],
+     {"gap_degraded": ["dropped_delta"],
+      "gap_span": {"narrowed": True, "start_ms": T0 + 200.0, "end_ms": T0 + 300.0}}),
+
+    ("seq_across_an_incarnation_boundary_does_not_narrow",
+     "seq is monotonic only within an incarnation, so a bracket spanning a restart "
+     "compares numbers drawn from two different sequences. Narrowing on it would "
+     "exonerate a span nothing observed -- the whole interval stays degraded",
+     [segment(RUN1, 0, [
+         heartbeat(T0, 10),
+         store("i0", "b1", T0 + 100.0, "c1", seq=41)]),
+      segment(RUN2, 0, [
+         store("i0", "b2", T0 + 200.0, "c2", seq=3),
+         heartbeat(T0 + 300.0, 12, dropped=1)])],
+     {"gap_degraded": ["dropped_delta"], "gap_span": {"narrowed": False}}),
+
+    ("a_bracket_missing_seq_does_not_narrow",
+     "narrowing needs both sides. One record carrying no seq leaves no bracket to "
+     "narrow to, and a reader that narrowed to the nearest numbered pair would be "
+     "choosing a span the stream never delimited",
+     [segment(RUN1, 0, [
+         heartbeat(T0, 10),
+         store("i0", "b1", T0 + 100.0, "c1", seq=41),
+         store("i0", "b2", T0 + 200.0, "c2"),
+         store("i0", "b3", T0 + 300.0, "c3", seq=44),
+         heartbeat(T0 + 400.0, 13, dropped=1)])],
+     {"gap_degraded": ["dropped_delta"], "gap_span": {"narrowed": False}}),
+
+    # --- 5.9: a store count is an insertion count only where the producer says so -------
+    ("reuse_none_makes_every_store_an_insertion",
+     "the producer declares its engine never announces reuse as a store, so the records "
+     "mean what they appear to mean and the count is available",
+     [segment(RUN1, 0, [
+         heartbeat(T0, 10, reuse_reporting="none"),
+         store("i0", "b1", T0 + 100.0, "c1"),
+         store("i0", "b2", T0 + 200.0, "c2")])],
+     {"insertions": insertions(True, records=2, tokens=32)}),
+
+    ("reuse_labelled_excludes_the_reused_records",
+     "the engine announces reuse and the producer can tell it apart, so the labelled "
+     "records are excluded from the insertion figure. They are not discarded: a reuse is "
+     "direct evidence a resident block was matched, which nothing else in the stream says",
+     [segment(RUN1, 0, [
+         heartbeat(T0, 10, reuse_reporting="labelled"),
+         store("i0", "b1", T0 + 100.0, "c1"),
+         store("i0", "b1", T0 + 200.0, "c1", reused=True),
+         store("i0", "b2", T0 + 300.0, "c2")])],
+     {"insertions": insertions(True, records=2, tokens=32)}),
+
+    ("reuse_unlabelled_forbids_an_insertion_count",
+     "the engine announces reuse in a shape nothing distinguishes. Summing these records "
+     "would count a block once per announcement, so the figure would climb with how "
+     "EFFECTIVE the cache is -- highest on the fleet with least waste. No such figure "
+     "exists, and a reader must not present one",
+     [segment(RUN1, 0, [
+         heartbeat(T0, 10, reuse_reporting="unlabelled"),
+         store("i0", "b1", T0 + 100.0, "c1"),
+         store("i0", "b1", T0 + 200.0, "c1")])],
+     {"insertions": insertions(False)}),
+
+    ("reuse_undeclared_is_not_none",
+     "silence is not the safe-sounding case. A producer that declared nothing has not "
+     "said its stores are insertions, and reading absence as a declaration is exactly "
+     "how an unknown becomes a measurement",
+     [segment(RUN1, 0, [
+         heartbeat(T0, 10),
+         store("i0", "b1", T0 + 100.0, "c1")])],
+     {"insertions": insertions(False)}),
+
+    ("reuse_unrecognized_reads_as_unlabelled",
+     "a value this version does not define was added by a later one to describe a case "
+     "this reader cannot model, so the one thing known about it is that the reader does "
+     "not know. It reads as unlabelled -- never as none, and never by ignoring the field, "
+     "which would restore the very miscount the declaration exists to prevent",
+     [segment(RUN1, 0, [
+         heartbeat(T0, 10, reuse_reporting="sampled_at_source"),
+         store("i0", "b1", T0 + 100.0, "c1")])],
+     {"insertions": insertions(False)}),
+
+    ("a_window_takes_the_weakest_reuse_declaration_it_contains",
+     "declarations are per producer and a window may span several. Mixing them would "
+     "apply one producer's none to another's records, which that producer never claimed",
+     [segment(RUN1, 0, [
+         heartbeat(T0, 10, reuse_reporting="none"),
+         store("i0", "b1", T0 + 100.0, "c1")]),
+      segment(RUN2, 0, [
+         heartbeat(T0 + 200.0, 10, source="i1", reuse_reporting="unlabelled"),
+         store("i1", "b2", T0 + 300.0, "c2")])],
+     {"insertions": insertions(False)}),
+
     ("audit_re_store_after_eviction",
      "store, evict, re-store, evict again: both evicts grade against their own store and "
      "agree. The delete-on-evict producer path in miniature, and the first flow a "

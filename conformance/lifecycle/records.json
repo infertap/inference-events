@@ -19,7 +19,8 @@
     "max_segment_secs": 300,
     "egress": "pseudonymized",
     "key_epoch": 3,
-    "canary": "2a0d53e8a23631a0e8ab966069f98f3c"
+    "canary": "2a0d53e8a23631a0e8ab966069f98f3c",
+    "reuse_reporting": "unlabelled"
    },
    "expect": {
     "gpu": "fixture",
@@ -34,7 +35,8 @@
     "max_segment_secs": 300,
     "egress": "pseudonymized",
     "key_epoch": 3,
-    "canary": "2a0d53e8a23631a0e8ab966069f98f3c"
+    "canary": "2a0d53e8a23631a0e8ab966069f98f3c",
+    "reuse_reporting": "unlabelled"
    }
   },
   {
@@ -42,6 +44,7 @@
    "at_ms": 1785153730000.0,
    "stats": {
     "canary": "2a0d53e8a23631a0e8ab966069f98f3c",
+    "reuse_reporting": "unlabelled",
     "msgs_seen": 10,
     "dropped": 1,
     "oversized": 0,
@@ -59,7 +62,8 @@
       "endpoint": "tcp://127.0.0.1:5557",
       "msgs_seen": 10,
       "dropped": 1,
-      "last_msg_at_ms": 1785153671500.0
+      "last_msg_at_ms": 1785153671500.0,
+      "topic": "kv@10.0.1.7:8000@meta-llama/Llama-3.1-8B-Instruct"
      },
      {
       "source": "i1",
@@ -87,6 +91,7 @@
     "content_bridge_evicted": 0,
     "publisher_restarts": 1,
     "canary": "2a0d53e8a23631a0e8ab966069f98f3c",
+    "reuse_reporting": "unlabelled",
     "rss_bytes": 20480000,
     "endpoints": [
      {
@@ -94,7 +99,8 @@
       "endpoint": "tcp://127.0.0.1:5557",
       "msgs_seen": 10,
       "dropped": 1,
-      "last_msg_at_ms": 1785153671500.0
+      "last_msg_at_ms": 1785153671500.0,
+      "topic": "kv@10.0.1.7:8000@meta-llama/Llama-3.1-8B-Instruct"
      },
      {
       "source": "i1",
@@ -111,6 +117,7 @@
    "reason": "signal",
    "stats": {
     "canary": "2a0d53e8a23631a0e8ab966069f98f3c",
+    "reuse_reporting": "unlabelled",
     "msgs_seen": 12,
     "dropped": 1,
     "oversized": 0,
@@ -128,7 +135,8 @@
       "endpoint": "tcp://127.0.0.1:5557",
       "msgs_seen": 10,
       "dropped": 1,
-      "last_msg_at_ms": 1785153671500.0
+      "last_msg_at_ms": 1785153671500.0,
+      "topic": "kv@10.0.1.7:8000@meta-llama/Llama-3.1-8B-Instruct"
      },
      {
       "source": "i1",
@@ -156,13 +164,15 @@
     "content_bridge_evicted": 0,
     "publisher_restarts": 1,
     "canary": "2a0d53e8a23631a0e8ab966069f98f3c",
+    "reuse_reporting": "unlabelled",
     "endpoints": [
      {
       "source": "i0",
       "endpoint": "tcp://127.0.0.1:5557",
       "msgs_seen": 10,
       "dropped": 1,
-      "last_msg_at_ms": 1785153671500.0
+      "last_msg_at_ms": 1785153671500.0,
+      "topic": "kv@10.0.1.7:8000@meta-llama/Llama-3.1-8B-Instruct"
      },
      {
       "source": "i1",

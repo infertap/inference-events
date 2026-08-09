@@ -1,7 +1,7 @@
 {
  "fixture_version": "v0",
- "name": "canary_split_key_material_is_not_a_measured_zero",
- "note": "two producers, two canaries, and nothing on the wire that relates them -- the testimony that once could is exactly what 3.4 forbids. Identities under different keys cannot match at any overlap, so the zero describes the provisioning, not the traffic: split_key_space. A reader that folds the two spaces on any heuristic grades this a measured absence and fails -- the fold is what would let one mis-provisioned node silence the alarm fleet-wide",
+ "name": "a_window_takes_the_weakest_reuse_declaration_it_contains",
+ "note": "declarations are per producer and a window may span several. Mixing them would apply one producer's none to another's records, which that producer never claimed",
  "segments": [
   [
    {
@@ -13,12 +13,12 @@
    },
    {
     "kind": "heartbeat",
-    "at_ms": 1785153671000.0,
-    "msgs_seen": 5,
+    "at_ms": 1785153670000.0,
+    "msgs_seen": 10,
     "dropped": 0,
     "oversized": 0,
     "unknown_types": 0,
-    "events_ingested": 5,
+    "events_ingested": 10,
     "content_unresolved": 0,
     "content_bridge_entries": 0,
     "content_bridge_evicted": 0,
@@ -27,23 +27,23 @@
      {
       "source": "i0",
       "endpoint": "tcp://i0:5557",
-      "msgs_seen": 5,
+      "msgs_seen": 10,
       "dropped": 0,
-      "last_msg_at_ms": 1785153671000.0
+      "last_msg_at_ms": 1785153670000.0
      }
     ],
-    "canary": "c0ffee11c0ffee11c0ffee11c0ffee11"
+    "reuse_reporting": "none"
    },
    {
     "kind": "store",
     "instance_id": "i0",
-    "block_id": "1a2b3c",
+    "block_id": "b1",
     "n_tokens": 16,
     "tier": "GPU",
     "dp_rank": 0,
     "group_idx": 0,
-    "at_ms": 1785153680000.0,
-    "content_id": "aa1111"
+    "at_ms": 1785153670100.0,
+    "content_id": "c1"
    }
   ],
   [
@@ -56,12 +56,12 @@
    },
    {
     "kind": "heartbeat",
-    "at_ms": 1785153671000.0,
-    "msgs_seen": 5,
+    "at_ms": 1785153670200.0,
+    "msgs_seen": 10,
     "dropped": 0,
     "oversized": 0,
     "unknown_types": 0,
-    "events_ingested": 5,
+    "events_ingested": 10,
     "content_unresolved": 0,
     "content_bridge_entries": 0,
     "content_bridge_evicted": 0,
@@ -70,27 +70,31 @@
      {
       "source": "i1",
       "endpoint": "tcp://i1:5557",
-      "msgs_seen": 5,
+      "msgs_seen": 10,
       "dropped": 0,
-      "last_msg_at_ms": 1785153671000.0
+      "last_msg_at_ms": 1785153670200.0
      }
     ],
-    "canary": "deadbeefdeadbeefdeadbeefdeadbeef"
+    "reuse_reporting": "unlabelled"
    },
    {
     "kind": "store",
     "instance_id": "i1",
-    "block_id": "4d5e6f",
+    "block_id": "b2",
     "n_tokens": 16,
     "tier": "GPU",
     "dp_rank": 0,
     "group_idx": 0,
-    "at_ms": 1785153681000.0,
-    "content_id": "bb2222"
+    "at_ms": 1785153670300.0,
+    "content_id": "c2"
    }
   ]
  ],
  "expect": {
-  "residual_zero": "split_key_space"
+  "insertions": {
+   "countable": false,
+   "records": null,
+   "tokens": null
+  }
  }
 }

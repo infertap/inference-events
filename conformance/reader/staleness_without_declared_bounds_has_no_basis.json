@@ -7,7 +7,7 @@
    {
     "kind": "segment_open",
     "at_ms": 1785153669000.0,
-    "contract_version": "1.0",
+    "contract_version": "1.1",
     "incarnation": "1785153600000-100",
     "segment_seq": 1
    },
@@ -60,7 +60,7 @@
    {
     "kind": "segment_open",
     "at_ms": 1785153669000.0,
-    "contract_version": "1.0",
+    "contract_version": "1.1",
     "incarnation": "1785153900000-200",
     "segment_seq": 0
    },

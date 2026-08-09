@@ -61,6 +61,12 @@ def with_stats(rec, s):
     # the check has to be available wherever the comparison is made
     if s.get("canary") is not None:
         rec["canary"] = s["canary"]
+    # What a `store` MEANS on this stream (spec 2.3, 5.9), riding heartbeats for exactly the
+    # canary's reason. It describes the ENGINE rather than the traffic, so it never varies
+    # within an incarnation -- and its absence is not "none": a producer that declared
+    # nothing has not said its stores are insertions.
+    if s.get("reuse_reporting") is not None:
+        rec["reuse_reporting"] = s["reuse_reporting"]
     if s.get("rss_bytes") is not None:
         rec["rss_bytes"] = s["rss_bytes"]
     rec["endpoints"] = [
@@ -92,10 +98,17 @@ START_CONFIG = {
     "egress": "pseudonymized",
     "key_epoch": 3,
     "canary": canary(3),
+    # The declaration rides the boot record AND every heartbeat. Here it is "unlabelled":
+    # the reference engine announces cache reuse with the same event it uses for a fresh
+    # insertion, in a shape nothing distinguishes, so the honest value is the one that
+    # forbids an insertion count rather than the one that would flatter it.
+    "reuse_reporting": "unlabelled",
 }
 
 HEARTBEAT_STATS = {
     "canary": canary(3),
+    # rides all three lifecycle kinds, exactly as the canary does and for the same reason
+    "reuse_reporting": "unlabelled",
     "msgs_seen": 10,
     "dropped": 1,
     "oversized": 0,
@@ -118,6 +131,11 @@ HEARTBEAT_STATS = {
             "msgs_seen": 10,
             "dropped": 1,
             "last_msg_at_ms": T0 + 1500.0,
+            # relayed VERBATIM and unparsed: deployments encode real identity here (several
+            # conventions put the served model and the pod in it), but the conventions are
+            # the deployment's, so recognizing one is a reader's business and a producer
+            # that split it would be publishing an interpretation as a fact
+            "topic": "kv@10.0.1.7:8000@meta-llama/Llama-3.1-8B-Instruct",
         },
         # nothing seen yet on this one: last_msg_at_ms is ABSENT, not null
         {
