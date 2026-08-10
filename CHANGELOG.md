@@ -1,5 +1,23 @@
 # Changelog
 
+## v1.1 draft 6, 2026-08-10
+
+Prose correction, one fixture note among it. §5.9's justification claimed the wrong
+thing about the failure it forbids.
+
+It said summing `store` records under an unlabelled declaration makes the figure "rise
+with how effective the cache is." Holding a workload fixed, it does not. A block that
+stops being recomputed starts being announced as a hit instead and contributes the same
+tokens either way, so the sum is inserted plus reused and stays roughly flat whatever
+the cache does. What rises is the error, not the figure.
+
+The correction matters in the direction of the argument, not against it. A number that
+climbs suspiciously invites a second look; one that quietly goes flat while the quantity
+it is read as falls does not. The obligation in §5.9 is unchanged, and no MUST moves.
+
+`reader/reuse_unlabelled_forbids_an_insertion_count`'s note carried the same claim, so
+`CONTRACT_HASH` moves even though no fixture's input or expected verdict changes.
+
 ## v1.1 draft 5, 2026-08-09
 
 One fixture re-cut. It did not test what it claimed, which makes it worse than no fixture:
@@ -69,8 +87,9 @@ Additive: four new optional fields, so the minor version increments and
 - **`reuse_reporting` on the lifecycle records, `reused` on `store`, and §5.9.** Some
   engines announce a block *reused* from cache with the same event they use for one newly
   inserted, in a shape a consumer cannot tell apart. Summing `store` records on such a
-  stream counts a block once per announcement, so the figure climbs with how *effective*
-  the cache is — highest on the fleet with the least waste. The producer declares which of
+  stream gives inserted plus reused with nothing separating them, so a block that stops
+  being recomputed starts being announced as a hit instead and contributes the same tokens
+  either way: the total barely moves while insertions fall. The producer declares which of
   three states it is in; §5.9 states the reader's obligation under each. Absence is not
   `"none"`, and neither is a value a later version defines: both read as `"unlabelled"`.
 

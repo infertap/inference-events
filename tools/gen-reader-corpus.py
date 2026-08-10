@@ -312,9 +312,10 @@ FIXTURES = [
 
     ("reuse_unlabelled_forbids_an_insertion_count",
      "the engine announces reuse in a shape nothing distinguishes. Summing these records "
-     "would count a block once per announcement, so the figure would climb with how "
-     "EFFECTIVE the cache is -- highest on the fleet with least waste. No such figure "
-     "exists, and a reader must not present one",
+     "gives inserted plus reused with nothing separating them: a block that stops being "
+     "recomputed starts being announced as a hit instead, and contributes the same tokens "
+     "either way, so the total barely moves while insertions fall. No such figure exists, "
+     "and a reader must not present one",
      [segment(RUN1, 0, [
          heartbeat(T0, 10, reuse_reporting="unlabelled"),
          store("i0", "b1", T0 + 100.0, "c1"),

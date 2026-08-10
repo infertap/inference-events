@@ -791,11 +791,13 @@ follows the declaration, per holder and per window:
   quantity of insertions or of inserted tokens. It MAY still report residency, identity and
   duplication, none of which counts a record twice for being announced twice.
 
-The failure this forbids is not a small one and it does not look like an error. Where reuse is
-announced and unlabelled, summing `store` records counts a block once per announcement, so the
-figure rises with how *effective* the cache is — best on exactly the fleet with least waste. A
-reader that reports it as inserted tokens has inverted the measurement while every input was
-correct.
+The failure this forbids is not a small one and it does not look like an error. Summing `store`
+records gives tokens inserted only where reuse is not announced. Where it is announced and
+unlabelled the sum gives inserted plus reused, with nothing separating them: a block that stops
+being recomputed starts being announced as a hit instead, and contributes the same tokens either
+way. **The total barely moves while insertions fall.** A reader that reports it as inserted
+tokens has inverted the measurement while every input was correct, and nothing in the figure
+looks wrong.
 
 **"Unqualified" is doing work, and the two qualified cases fall on opposite sides.** A reuse
 announcement describes a block the engine found **resident**. That single fact decides both:
