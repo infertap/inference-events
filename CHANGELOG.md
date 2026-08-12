@@ -1,5 +1,32 @@
 # Changelog
 
+## v1.3, 2026-08-12
+
+The liveness bounds ride the segment header.
+
+`heartbeat_secs` and `max_segment_secs` move from `agent_start` to `segment_open`, where §5.8
+now requires them on every header a producer writes.
+
+**This is the reason §3.4 already gives for the canary and §2.4 for `reuse_reporting`**, applied
+to the last declaration that had not taken it: an analysis window need not contain a start
+record, and a declaration a reader cannot reach is one it cannot apply. Those two were fixed by
+riding all three lifecycle kinds; the bounds were left on `agent_start` alone.
+
+The consequence was specific and unbounded. `agent_start` is written once per run, into whichever
+segment was open at process start, while the records it qualifies outlive that segment — so
+whether a reader could judge staleness at all depended on a retention policy rather than on the
+data. A producer running longer than a reader keeps records became permanently unjudgeable, and
+that is exactly the producer worth judging. §5.8 calls these bounds *the entire basis on which a
+reader can call a producer stale*, so losing them loses the verdict, not a detail.
+
+The header carries them rather than the other lifecycle kinds because §4 already requires every
+segment to begin with one: a segment containing no lifecycle record at all still declares.
+
+`agent_start` keeps what describes the start EVENT — version, egress mode, endpoint count,
+payload ceiling. A reader that never sees one is now missing a diagnostic rather than a basis.
+
+Minor, on the same footing and the same recorded exemption as 1.2.
+
 ## v1.2, 2026-08-12
 
 Run-constant fields ride the header instead of every record.

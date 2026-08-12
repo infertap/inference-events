@@ -93,8 +93,6 @@ def canary(epoch):
 START_CONFIG = {
     "endpoint_count": 2,
     "max_payload_bytes": 16777216,
-    "heartbeat_secs": 60,
-    "max_segment_secs": 300,
     "egress": "pseudonymized",
     "key_epoch": 3,
     "canary": canary(3),
