@@ -17,7 +17,9 @@
     "gpu": "fixture",
     "vllm_version": "0.26.0",
     "event_schema_version": "vllm-0.26.0-map",
-    "contract_version": "1.2",
+    "contract_version": "1.3",
+    "heartbeat_secs": 60,
+    "max_segment_secs": 300,
     "incarnation": "1785153670000-4242",
     "segment_seq": 0
    }
@@ -78,7 +80,9 @@
     "gpu": "fixture",
     "vllm_version": "0.26.0",
     "event_schema_version": "vllm-0.26.0-map",
-    "contract_version": "1.2",
+    "contract_version": "1.3",
+    "heartbeat_secs": 60,
+    "max_segment_secs": 300,
     "incarnation": "1785153670000-4242",
     "segment_seq": 0
    },
