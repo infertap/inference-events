@@ -23,9 +23,6 @@
     "reuse_reporting": "unlabelled"
    },
    "expect": {
-    "gpu": "fixture",
-    "vllm_version": "0.26.0",
-    "event_schema_version": "vllm-0.26.0-map",
     "kind": "agent_start",
     "at_ms": 1785153670000.0,
     "agent_version": "0.0.0-fixture",
@@ -75,9 +72,6 @@
     ]
    },
    "expect": {
-    "gpu": "fixture",
-    "vllm_version": "0.26.0",
-    "event_schema_version": "vllm-0.26.0-map",
     "kind": "heartbeat",
     "at_ms": 1785153730000.0,
     "msgs_seen": 10,
@@ -148,9 +142,6 @@
     ]
    },
    "expect": {
-    "gpu": "fixture",
-    "vllm_version": "0.26.0",
-    "event_schema_version": "vllm-0.26.0-map",
     "kind": "agent_stop",
     "at_ms": 1785153760000.0,
     "reason": "signal",
@@ -197,9 +188,6 @@
     "window_end_ms": 1785153711000.75
    },
    "expect": {
-    "gpu": "fixture",
-    "vllm_version": "0.26.0",
-    "event_schema_version": "vllm-0.26.0-map",
     "kind": "identity_refused",
     "at_ms": 1785153730000.0,
     "instance_id": "i0",

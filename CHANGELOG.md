@@ -1,5 +1,52 @@
 # Changelog
 
+## v1.2, 2026-08-12
+
+Run-constant fields ride the header instead of every record.
+
+**§2.2:** a producer MUST emit provenance on `segment_open` and MUST NOT emit provenance keys
+on any other record. A reader MUST apply a segment's header provenance to every record in it.
+
+**§2.7, new:** `workload_class`, an optional declaration on `segment_open` naming what a
+producer's traffic is for, propagated the same way. Absent means the producer said nothing,
+not that it serves no workload.
+
+The provenance change is measured. Provenance is byte-identical on every record of a run, and
+on this corpus it is 80 bytes of a 251-byte mean record — **32% of the stream, one distinct
+value across all 48 records.** It is the same shape as `incarnation`, which this contract
+already keeps in the header for exactly this reason.
+
+**It is on `segment_open` rather than `agent_start` because a segment must be self-describing.**
+Segments are delivered, ingested and dropped independently: `agent_start` appears once, in
+whichever segment was open at process start, and a producer's disk cap drops OLDEST segments
+first — so provenance would go missing precisely for the runs that had been going longest, and
+unrecoverably. Every segment already begins with a header by §4's own requirement.
+
+**This is a MUST rather than a choice between two forms, and it costs a reader nothing**, which
+is the fact that makes it safe. Under 1.1 provenance was stamped on every record — the header
+among them, because the header is a record like any other. It is therefore present in every
+segment ever written, and a reader that takes it from the header alone is correct on 1.1 and
+1.2 alike with no second code path. Retention makes that concrete rather than theoretical: a
+reader meets segments written by the previous producer for as long as it keeps them.
+
+**Minor by decision, not by the versioning law, and §6.1 says so.** Requiring provenance on the
+header alone makes a 1.1 producer that repeats it non-conforming, which the law calls major.
+It is taken as minor because this contract has exactly one producer and one reader, both ours,
+with no third party holding either — and the reader side does not break at all. The exemption
+is written down with its expiry: it ends the moment a producer exists that we do not ship.
+
+Four fixtures enter with it, and they needed a new expectation vocabulary. The reader corpus
+had verdicts for domain answers and nothing for *which declaration applies to this record*.
+`attribution` is that shape — per segment, the provenance and workload class a reader must
+apply to every record in it — derived from the header rather than from any producer, so a
+fixture cannot inherit an implementation's opinion.
+
+`a_1_1_segment_reads_from_its_header_like_any_other` is the one worth reading twice: it pins
+that the retention window needs no compatibility path, only a header that was always there.
+`each_segment_carries_its_own_declaration` pins that a reconfiguration between runs does not
+reach back, which is the property that makes declaring at the source better than joining a
+reader's own configuration in, where today's answer would be applied to yesterday's records.
+
 ## v1.1 draft 6, 2026-08-10
 
 Prose correction, one fixture note among it. §5.9's justification claimed the wrong

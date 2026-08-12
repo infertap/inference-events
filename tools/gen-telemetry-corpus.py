@@ -36,8 +36,12 @@ T0 = 1785153670000.0
 
 def record(ev):
     """The record a faithful transducer emits for one event. Written from
-    the specification's normative text, not from the reference producer's code."""
-    r = dict(PROVENANCE)
+    the specification's normative text, not from the reference producer's code.
+
+    It carries no provenance: provenance is declared once on the segment header and a reader
+    applies it to every record in that segment (spec 2.2). The fixture's own `provenance` key
+    is the producer's configuration, which is what the header states."""
+    r = {}
     r["instance_id"] = ev["source"]
     # Scope: block events always carry both dimensions (they ride every observed wire
     # event, so absence in a fixture is shorthand for the single-worker zero). A Cleared's

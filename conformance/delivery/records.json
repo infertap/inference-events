@@ -12,12 +12,12 @@
   {
    "note": "opens every segment; carries the identity the filename merely echoes",
    "expect": {
+    "kind": "segment_open",
+    "at_ms": 1785153670000.0,
     "gpu": "fixture",
     "vllm_version": "0.26.0",
     "event_schema_version": "vllm-0.26.0-map",
-    "kind": "segment_open",
-    "at_ms": 1785153670000.0,
-    "contract_version": "1.1",
+    "contract_version": "1.2",
     "incarnation": "1785153670000-4242",
     "segment_seq": 0
    }
@@ -25,9 +25,6 @@
   {
    "note": "an attributable orphan: header survived, tail torn and discarded",
    "expect": {
-    "gpu": "fixture",
-    "vllm_version": "0.26.0",
-    "event_schema_version": "vllm-0.26.0-map",
     "kind": "segment_recovered",
     "at_ms": 1785153671000.0,
     "attributed": true,
@@ -37,9 +34,6 @@
   {
    "note": "an unattributable orphan: the crash took the header, so it belongs to no sequence and its span is coverage-indeterminate",
    "expect": {
-    "gpu": "fixture",
-    "vllm_version": "0.26.0",
-    "event_schema_version": "vllm-0.26.0-map",
     "kind": "segment_recovered",
     "at_ms": 1785153672000.0,
     "attributed": false,
@@ -49,9 +43,6 @@
   {
    "note": "declared loss -- segments 4 through 6 dropped under the disk cap. The magnitudes are illustrative; the shapes are the contract.",
    "expect": {
-    "gpu": "fixture",
-    "vllm_version": "0.26.0",
-    "event_schema_version": "vllm-0.26.0-map",
     "kind": "segments_dropped",
     "at_ms": 1785153673000.0,
     "incarnation": "1785153670000-4242",
@@ -65,9 +56,6 @@
   {
    "note": "the same pass reclaiming a PREVIOUS run's segments: a second record, under that run's incarnation rather than the dropping process's. One record per incarnation is what keeps a range describable.",
    "expect": {
-    "gpu": "fixture",
-    "vllm_version": "0.26.0",
-    "event_schema_version": "vllm-0.26.0-map",
     "kind": "segments_dropped",
     "at_ms": 1785153673000.0,
     "incarnation": "1785153600000-1817",
@@ -85,19 +73,16 @@
   "incarnation": "1785153670000-4242",
   "lines": [
    {
+    "kind": "segment_open",
+    "at_ms": 1785153670000.0,
     "gpu": "fixture",
     "vllm_version": "0.26.0",
     "event_schema_version": "vllm-0.26.0-map",
-    "kind": "segment_open",
-    "at_ms": 1785153670000.0,
-    "contract_version": "1.1",
+    "contract_version": "1.2",
     "incarnation": "1785153670000-4242",
     "segment_seq": 0
    },
    {
-    "gpu": "fixture",
-    "vllm_version": "0.26.0",
-    "event_schema_version": "vllm-0.26.0-map",
     "kind": "store",
     "at_ms": 1785153670010.0,
     "instance_id": "i0",
@@ -106,9 +91,6 @@
     "tier": "gpu"
    },
    {
-    "gpu": "fixture",
-    "vllm_version": "0.26.0",
-    "event_schema_version": "vllm-0.26.0-map",
     "kind": "store",
     "at_ms": 1785153670020.0,
     "instance_id": "i0",
@@ -117,9 +99,6 @@
     "tier": "gpu"
    },
    {
-    "gpu": "fixture",
-    "vllm_version": "0.26.0",
-    "event_schema_version": "vllm-0.26.0-map",
     "kind": "evict",
     "at_ms": 1785153670030.0,
     "instance_id": "i0",
@@ -132,18 +111,12 @@
   "filename": "orphan-1785153680000.jsonl",
   "lines": [
    {
-    "gpu": "fixture",
-    "vllm_version": "0.26.0",
-    "event_schema_version": "vllm-0.26.0-map",
     "kind": "segment_recovered",
     "at_ms": 1785153672000.0,
     "attributed": false,
     "dropped_bytes": 42
    },
    {
-    "gpu": "fixture",
-    "vllm_version": "0.26.0",
-    "event_schema_version": "vllm-0.26.0-map",
     "kind": "store",
     "at_ms": 1785153670010.0,
     "instance_id": "i0",
@@ -152,9 +125,6 @@
     "tier": "gpu"
    },
    {
-    "gpu": "fixture",
-    "vllm_version": "0.26.0",
-    "event_schema_version": "vllm-0.26.0-map",
     "kind": "evict",
     "at_ms": 1785153670030.0,
     "instance_id": "i0",

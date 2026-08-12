@@ -114,16 +114,51 @@ RUN2 = "1785153900000-200"
 RUN3 = "1785154200000-300"
 
 
-def segment(incarnation, seq, records):
-    """One sealed segment: the header the delivery contract demands, then the records."""
+def segment(incarnation, seq, records, provenance=None, workload_class=None,
+            per_record_provenance=None, version="1.1"):
+    """One sealed segment: the header the delivery contract demands, then the records.
+
+    `provenance` and `workload_class` go on the HEADER and are declared once for the whole
+    segment (spec 2.2, 2.7). Since 1.2 that is the ONLY conforming place: a producer MUST NOT
+    repeat provenance on other records. `per_record_provenance` builds the 1.1 shape a reader
+    still meets across its retention window -- the header carries it there too, which is what
+    lets one code path read both.
+    """
     header = {
         "kind": "segment_open",
         "at_ms": T0 - 1000.0,
-        "contract_version": "1.1",
+        "contract_version": version,
         "incarnation": incarnation,
         "segment_seq": seq,
     }
-    return [header] + records
+    if provenance is not None:
+        header.update(provenance)
+    if workload_class is not None:
+        header["workload_class"] = workload_class
+    out = [header] + records
+    if per_record_provenance is not None:
+        out = [{**per_record_provenance, **r} for r in out]
+    return out
+
+
+def attributed(segments):
+    """The effective attribution per segment: what a reader must apply to every record in it.
+
+    Derived from the spec text (governance rule 4), never from a producer: the header's
+    provenance keys are everything on `segment_open` that is not a field this contract names,
+    and `workload_class` is the declaration or nothing.
+    """
+    named = {"kind", "at_ms", "contract_version", "incarnation", "segment_seq",
+             "workload_class", "attributed", "recovered_from"}
+    out = []
+    for i, seg in enumerate(segments):
+        head = seg[0]
+        out.append({
+            "segment": i,
+            "provenance": {k: v for k, v in head.items() if k not in named},
+            "workload_class": head.get("workload_class"),
+        })
+    return {"attribution": out}
 
 
 def store(instance, block, at, content=None, dp_rank=0, seq=None, reused=None):
@@ -243,6 +278,26 @@ def audit_verdict(**per_instance):
     zero = {"audited": 0, "agreed": 0, "mismatched": 0, "underresolved": 0,
             "indeterminate": 0, "unjoined": 0}
     return {i: {**zero, **v, "audited": sum(v.values())} for i, v in per_instance.items()}
+
+
+PROV_A = {"gpu": "fixture", "vllm_version": "0.26.0", "event_schema_version": "vllm-0.26.0-map"}
+PROV_B = {"gpu": "fixture-b", "vllm_version": "0.26.0", "event_schema_version": "vllm-0.26.0-map"}
+
+
+def _hdr_seg(run, seq, prov, wl):
+    """A 1.2 segment: run-constant fields on the header, records carrying neither."""
+    return segment(run, seq, [store("i0", "b1", T0 + 1000.0)],
+                   provenance=prov, workload_class=wl, version="1.2")
+
+
+def _legacy_seg(run, seq, prov):
+    """A 1.1 segment: provenance stamped on every record, the header among them.
+
+    Not a second conforming form under 1.2, which forbids repeating it -- this is the shape a
+    reader still meets across its retention window and must read from the header with no
+    special handling.
+    """
+    return segment(run, seq, [store("i0", "b1", T0 + 1000.0)], per_record_provenance=prov)
 
 
 FIXTURES = [
@@ -871,6 +926,40 @@ FIXTURES = [
          heartbeat(T0 + 120_000.0, 20)]),
       horizon_producer()],
      {"staleness": {RUN1: "no_basis", RUN2: "live"}}),
+    # --- 2.2 / 2.7: run-constant fields ride the header (since 1.2) ---------------------
+    ("provenance_declared_once_applies_to_every_record",
+     "the header carries provenance and the records carry none. A reader applies the "
+     "segment's declaration to every record in it -- provenance is a property of the "
+     "producer RUN, and on the published corpus repeating it per record costs 32% of the "
+     "stream for one distinct value (spec 2.2)",
+     [_hdr_seg(RUN1, 0, PROV_A, "agentic")],
+     attributed([_hdr_seg(RUN1, 0, PROV_A, "agentic")])),
+
+    ("a_1_1_segment_reads_from_its_header_like_any_other",
+     "a segment written under 1.1, which stamped provenance onto every record. The header is "
+     "a record like any other, so it carried provenance too -- in every segment ever written. "
+     "A reader that takes provenance from the header alone is therefore correct here with no "
+     "second code path, and simply ignores the copies 1.1 repeats. That is what lets 2.2 be a "
+     "MUST rather than a choice between two forms: retention means a reader meets segments "
+     "written by the previous producer for as long as it keeps them (spec 2.2, 6.2)",
+     [_legacy_seg(RUN1, 0, PROV_A)],
+     {"attribution": [{"segment": 0, "provenance": PROV_A, "workload_class": None}]}),
+
+    ("an_undeclared_workload_class_is_absent_rather_than_empty",
+     "a producer that declares no workload class has said NOTHING, which is not the same as "
+     "declaring that it serves no workload. A reader must keep the two apart -- collapsed, a "
+     "fleet whose traffic is uncategorized reports as a fleet categorized as none (spec 2.7)",
+     [_hdr_seg(RUN1, 0, PROV_A, None)],
+     attributed([_hdr_seg(RUN1, 0, PROV_A, None)])),
+
+    ("each_segment_carries_its_own_declaration",
+     "two runs of one producer declare different workload classes. The declaration is scoped "
+     "to the segment that carries it, so a reconfiguration between runs does not reach back "
+     "-- which is the whole reason this rides the header rather than being joined in from a "
+     "reader's own configuration, where it would apply today's answer to yesterday's records "
+     "(spec 2.7)",
+     [_hdr_seg(RUN1, 0, PROV_A, "agentic"), _hdr_seg(RUN2, 0, PROV_B, "batch")],
+     attributed([_hdr_seg(RUN1, 0, PROV_A, "agentic"), _hdr_seg(RUN2, 0, PROV_B, "batch")])),
 ]
 
 

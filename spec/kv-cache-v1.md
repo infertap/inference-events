@@ -83,10 +83,27 @@ Every record carries:
 | `kind` | string | required | which record this is (§2.3 to §2.5) |
 | `at_ms` | number | required | epoch milliseconds. See §2.6 for clock domains |
 
-Every record also carries **provenance**: an operator-supplied set of top-level fields identifying
-the source in the operator's own vocabulary. Provenance keys are not specified here. Conventionally
-a stream carries the engine version and a hardware label. A reader MUST carry unrecognized
-provenance fields rather than discarding them, and MUST NOT validate them against anything.
+Every record carries **provenance**: an operator-supplied set of top-level fields identifying the
+source in the operator's own vocabulary. Provenance keys are not specified here. Conventionally a
+stream carries the engine version and a hardware label. A reader MUST carry unrecognized provenance
+fields rather than discarding them, and MUST NOT validate them against anything.
+
+**Provenance is a property of the producer RUN and is declared once.** A producer MUST emit
+provenance on the segment's `segment_open` record and MUST NOT emit provenance keys on any other
+record. A reader MUST apply a segment's `segment_open` provenance to every record in that segment.
+
+**This reads a 1.1 segment without special handling, which is why it can be a MUST.** Under 1.1 a
+producer stamped provenance onto every record — including `segment_open`, because the header is a
+record like any other. The header therefore already carries it in every segment ever written, so a
+reader that takes provenance from the header alone is correct on 1.1 and 1.2 alike and simply
+ignores the copies 1.1 repeats. Retention makes this concrete: a reader meets segments written by
+the previous producer for as long as it keeps them, and it needs no second code path to read them.
+
+The reason is measured, not aesthetic. Provenance is byte-identical on every record of a run, and
+on the published corpus it is **32% of the record stream** at 80 bytes on a 251-byte mean record.
+`--max-disk-bytes`-style local retention bounds a producer's own buffer, so a constant repeated per
+record trades directly against the completeness that bound exists to protect. This is the same
+reasoning that keeps `incarnation` in the header (§4.2) rather than on every record it describes.
 
 **Absent is not null.** An optional field that does not apply is omitted. A reader MUST distinguish
 *absent* from *present with a zero or empty value*. Several fields below mean different things in
@@ -192,8 +209,7 @@ an unknown `scope`, one field over. §5.9 states the obligation under each state
 `event_schema_version` fields are provenance (§2.2) and ride every record in these examples:*
 
 ```json
-{"gpu": "fixture", "vllm_version": "0.26.0", "event_schema_version": "vllm-0.26.0-map",
- "kind": "store", "at_ms": 1785153670000.0, "instance_id": "a", "dp_rank": 0, "group_idx": 0,
+{"kind": "store", "at_ms": 1785153670000.0, "instance_id": "a", "dp_rank": 0, "group_idx": 0,
  "block_id": "10841253731892115301", "n_tokens": 16, "tier": "GPU",
  "lora_id": 7, "lora_name": "customer-adapter", "spec_kind": "full_attention"}
 ```
@@ -218,8 +234,7 @@ join is an audit, not the identity mechanism, and a reader without it still conf
 *Example (informative), from `telemetry/content_id_rides_beside_the_engine_id`:*
 
 ```json
-{"gpu": "fixture", "vllm_version": "0.26.0", "event_schema_version": "vllm-0.26.0-map",
- "kind": "evict", "at_ms": 1785153670010.0, "instance_id": "a", "dp_rank": 0, "group_idx": 0,
+{"kind": "evict", "at_ms": 1785153670010.0, "instance_id": "a", "dp_rank": 0, "group_idx": 0,
  "block_id": "10841253731892115301", "tier": "GPU", "content_id": "11111111111111111111"}
 ```
 
@@ -267,8 +282,7 @@ named holder and scope at `at_ms`, rather than matching identities. [^clear]
 *Example (informative), from `telemetry/clear_is_scope_level`:*
 
 ```json
-{"gpu": "fixture", "vllm_version": "0.26.0", "event_schema_version": "vllm-0.26.0-map",
- "kind": "clear", "at_ms": 1785153670020.0, "instance_id": "a", "dp_rank": 0, "group_idx": 0,
+{"kind": "clear", "at_ms": 1785153670020.0, "instance_id": "a", "dp_rank": 0, "group_idx": 0,
  "scope": "all", "tier": "GPU"}
 ```
 
@@ -296,8 +310,7 @@ MAY observe several instances.
 *Example (informative), from `lifecycle/records`:*
 
 ```json
-{"gpu": "fixture", "vllm_version": "0.26.0", "event_schema_version": "vllm-0.26.0-map",
- "kind": "agent_start", "at_ms": 1785153670000.0, "agent_version": "0.0.0-fixture",
+{"kind": "agent_start", "at_ms": 1785153670000.0, "agent_version": "0.0.0-fixture",
  "egress": "pseudonymized", "endpoint_count": 2, "heartbeat_secs": 60, "max_segment_secs": 300,
  "max_payload_bytes": 16777216, "key_epoch": 3, "canary": "2a0d53e8a23631a0e8ab966069f98f3c"}
 ```
@@ -357,8 +370,7 @@ different claim from reporting zero. [^counters]
 nothing seen yet, so nothing is stamped:*
 
 ```json
-{"gpu": "fixture", "vllm_version": "0.26.0", "event_schema_version": "vllm-0.26.0-map",
- "kind": "heartbeat", "at_ms": 1785153730000.0,
+{"kind": "heartbeat", "at_ms": 1785153730000.0,
  "msgs_seen": 10, "dropped": 1, "oversized": 0, "unknown_types": 2, "events_ingested": 37,
  "content_unresolved": 5, "content_bridge_entries": 128, "content_bridge_evicted": 0,
  "publisher_restarts": 1, "noraw_scanned": 42, "rss_bytes": 20480000,
@@ -398,8 +410,7 @@ a crash leaves none, and that absence is the signal. [^stop]
 *Example (informative), from `lifecycle/records`:*
 
 ```json
-{"gpu": "fixture", "vllm_version": "0.26.0", "event_schema_version": "vllm-0.26.0-map",
- "kind": "agent_stop", "at_ms": 1785153760000.0, "reason": "signal",
+{"kind": "agent_stop", "at_ms": 1785153760000.0, "reason": "signal",
  "msgs_seen": 12, "dropped": 1, "oversized": 0, "unknown_types": 2, "events_ingested": 44,
  "content_unresolved": 5, "content_bridge_entries": 128, "content_bridge_evicted": 0,
  "publisher_restarts": 1, "canary": "2a0d53e8a23631a0e8ab966069f98f3c",
@@ -440,8 +451,7 @@ stand. [^refused]
 clock; the window fields are the engine clock:*
 
 ```json
-{"gpu": "fixture", "vllm_version": "0.26.0", "event_schema_version": "vllm-0.26.0-map",
- "kind": "identity_refused", "at_ms": 1785153730000.0, "instance_id": "i0",
+{"kind": "identity_refused", "at_ms": 1785153730000.0, "instance_id": "i0",
  "dp_rank": 0, "group_idx": 1, "refused": 2048,
  "window_start_ms": 1785153671000.25, "window_end_ms": 1785153711000.75}
 ```
@@ -461,12 +471,14 @@ The first record of every segment, written before any other record in that segme
 | `incarnation` | string | required | identifies one run of one producer (§4.2) |
 | `segment_seq` | integer | required | position in that incarnation's sequence, from zero |
 | `contract_version` | string | required | the version of this contract the segment conforms to (§6.1) |
+| `workload_class` | string | optional | what this producer's traffic is FOR, in the operator's vocabulary (§2.7). Since 1.2 |
 
 *Example (informative), from `delivery/records`:*
 
 ```json
 {"gpu": "fixture", "vllm_version": "0.26.0", "event_schema_version": "vllm-0.26.0-map",
- "kind": "segment_open", "at_ms": 1785153670000.0, "contract_version": "1.1",
+ "kind": "segment_open", "at_ms": 1785153670000.0, "contract_version": "1.2",
+ "workload_class": "agentic",
  "incarnation": "1785153670000-4242", "segment_seq": 0}
 ```
 
@@ -484,8 +496,7 @@ Written when a producer recovers a segment left unfinished by a predecessor.
 *Example (informative), from `delivery/records`:*
 
 ```json
-{"gpu": "fixture", "vllm_version": "0.26.0", "event_schema_version": "vllm-0.26.0-map",
- "kind": "segment_recovered", "at_ms": 1785153671000.0, "attributed": true, "dropped_bytes": 137}
+{"kind": "segment_recovered", "at_ms": 1785153671000.0, "attributed": true, "dropped_bytes": 137}
 ```
 
 #### `segments_dropped`
@@ -510,8 +521,7 @@ so a single record could not describe it as a range. [^dropped]
 *Example (informative), from `delivery/records`:*
 
 ```json
-{"gpu": "fixture", "vllm_version": "0.26.0", "event_schema_version": "vllm-0.26.0-map",
- "kind": "segments_dropped", "at_ms": 1785153673000.0, "incarnation": "1785153670000-4242",
+{"kind": "segments_dropped", "at_ms": 1785153673000.0, "incarnation": "1785153670000-4242",
  "count": 3, "first_seq": 4, "last_seq": 6,
  "first": "seg-1785153670000-4242-4.jsonl", "last": "seg-1785153670000-4242-6.jsonl"}
 ```
@@ -527,6 +537,33 @@ A reader MUST NOT compare timestamps across the two domains as though they were 
 MUST apply a configured skew allowance when comparing engine-domain timestamps originating from
 different instances. Without an allowance, a reader can report two events as simultaneous when the
 data cannot support that. [^clock]
+
+### 2.7 Workload class
+
+**Since 1.2.** A producer MAY declare a `workload_class` on its `segment_open` record: a name, in
+the operator's own vocabulary, for what this producer's traffic is FOR. Conventionally a stream
+declares something like `agentic` or `batch`. The vocabulary is not specified here, exactly as
+provenance keys are not.
+
+A reader MUST apply a segment's declared `workload_class` to every record in that segment, and MUST
+treat its absence as a bucket rather than a null: **a producer that declares nothing has not
+declared "no workload", it has said nothing**, and a reader that collapsed the two would report a
+fleet whose traffic is uncategorized as a fleet whose traffic is categorized as none.
+
+**It is declared, not observed, and it is declared HERE because this is where the truth is.** A
+producer runs beside one engine, configured by whoever knows what that engine serves. Nothing in
+the record stream reveals intent, and no reader can derive it. A reader that instead matched
+producer identifiers against a centrally-configured pattern would be pattern-matching over a naming
+convention: rename an instance and the label silently changes, or silently stops matching, with no
+error anywhere.
+
+**It rides the header for the same reason provenance does** (§2.2): it is constant for a producer
+run, so stating it per record would repeat a constant. A producer MUST NOT emit `workload_class` on
+any record other than `segment_open`.
+
+**A reader MUST NOT treat it as a fact about the records.** It is testimony from the producer about
+its own configuration, and it is admissible as exactly that. Two producers declaring the same class
+are making the same claim, not being observed to be alike.
 
 ## 3. Identity
 
@@ -847,6 +884,21 @@ under a new `semantics_version` without any change to `contract_version`.
 Additive changes, meaning new record kinds and new optional fields, increment the minor version.
 Anything else, including any change in the meaning of an existing field, increments the major
 version. A change in meaning MUST NOT be made without a major version increment. [^contractver]
+
+**1.2 is minor by decision, not by the law above, and the difference is recorded rather than
+disguised.** Requiring provenance on `segment_open` alone makes a 1.1 producer that repeats it
+non-conforming, and a producer-breaking change is a major version under the paragraph above.
+
+It is taken as a minor version because this contract currently has exactly one producer and one
+reader, both in this organisation, with no third party holding either. There is no fleet to skew
+and no consumer to strand. **The reader side does not break at all** — the header has carried
+provenance in every segment ever written, so a 1.2 reader reads 1.1 segments with no second code
+path.
+
+**This exemption expires the moment a producer exists that we do not ship.** At that point the
+paragraph above governs without exception, and a change of this shape takes a major version. A
+contract that keeps granting itself exemptions is not a contract, so this one is written down with
+its expiry rather than left as precedent.
 
 ### 6.2 The mixed-fleet law
 
