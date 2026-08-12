@@ -61,7 +61,11 @@ def segment_open(seq, at_ms):
     # the header states everything the segment declares once: the contract it conforms to, its
     # identity, and the producer's provenance, which a reader applies to every record in it
     r.update(PROVENANCE)
-    r["contract_version"] = "1.2"
+    r["contract_version"] = "1.3"
+    # 5.8: the liveness bounds are declared on every header. They are the entire basis on which a
+    # reader may call this producer stale, and an analysis window need not contain a start record.
+    r["heartbeat_secs"] = 60
+    r["max_segment_secs"] = 300
     r["incarnation"] = INCARNATION
     r["segment_seq"] = seq
     return r
