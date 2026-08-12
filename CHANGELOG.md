@@ -1,5 +1,33 @@
 # Changelog
 
+## v1.4, 2026-08-12
+
+The record schema becomes a machine-readable artifact.
+
+`conformance/schema/records.json` carries every record kind's fields with their declared type
+and presence, derived from §2.3–§2.5's own tables by `tools/gen-schema.py`. It is what a
+producer writes records against and what a reader builds its decode from.
+
+**It exists because that list was being transcribed by hand into implementations.** A consumer
+holds its own copy of the field set today, and a producer would need one to write anything
+columnar. Written twice it drifts, and it drifts on the fields that decide whether a taint
+fires — which is the failure a single decoder exists to prevent.
+
+Types are the half that must not be transcribed. A field name typed wrong fails loudly the
+first time anything reads it; a TYPE typed wrong is silent, and §2.2 already spends a paragraph
+on why timestamps are `number` rather than `integer`, because a reader parsing them as integers
+truncates.
+
+One prose sentence became a table: the `endpoints` element listed its fields in a sentence while
+every other field list in this document is a table. That inconsistency is why a generator could
+not see it, and it is worth fixing on its own terms.
+
+Two guards, both verified by breaking them. A type outside §2.2's vocabulary is an error rather
+than a default, because guessing would put a wrong physical type on a field nobody noticed was
+new. And every `####` heading inside §2.3–§2.5 must yield an entry — the row count alone cannot
+see a heading the parser walked past, because the rows behind it still land somewhere: under
+whichever kind came before. Misattribution is the worse failure and the quieter one.
+
 ## v1.3, 2026-08-12
 
 The liveness bounds ride the segment header.

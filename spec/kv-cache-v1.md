@@ -337,8 +337,16 @@ two heartbeats describes the span between them.
 | `noraw_scanned` | integer | optional | values checked by the producer's egress guard |
 | `rss_bytes` | integer | optional | producer resident memory |
 
-Each `endpoints` element carries `source` (string), `endpoint` (string), `msgs_seen` (integer),
-`dropped` (integer), `last_msg_at_ms` (number, optional), and `topic` (string, optional).
+Each `endpoints` element carries:
+
+| field | type | presence | meaning |
+|---|---|---|---|
+| `source` | string | required | the instance this subscription observes |
+| `endpoint` | string | required | the transport address subscribed to |
+| `msgs_seen` | integer | required | inbound messages observed on this subscription |
+| `dropped` | integer | required | inbound messages known lost on this subscription |
+| `last_msg_at_ms` | number | optional | producer clock at the last message, absent where none has arrived |
+| `topic` | string | optional | the channel name the transport supplied, relayed verbatim (below) |
 
 **`reuse_reporting` rides all three lifecycle kinds**, exactly as the canary does and for the
 same reason (§3.4): an analysis window need not contain a start record, and a declaration a
