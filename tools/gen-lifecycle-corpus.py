@@ -34,7 +34,7 @@ T0 = 1785153670000.0
 
 
 def base(kind, at_ms):
-    r = dict(PROVENANCE)
+    r = {}
     r["kind"] = kind
     r["at_ms"] = at_ms
     return r

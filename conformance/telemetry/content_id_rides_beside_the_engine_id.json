@@ -43,9 +43,6 @@
   },
   "records": [
    {
-    "gpu": "fixture",
-    "vllm_version": "0.26.0",
-    "event_schema_version": "vllm-0.26.0-map",
     "instance_id": "a",
     "dp_rank": 0,
     "group_idx": 0,
@@ -58,9 +55,6 @@
     "content_id": "11111111111111111111"
    },
    {
-    "gpu": "fixture",
-    "vllm_version": "0.26.0",
-    "event_schema_version": "vllm-0.26.0-map",
     "instance_id": "a",
     "dp_rank": 0,
     "group_idx": 0,
@@ -71,9 +65,6 @@
     "content_id": "11111111111111111111"
    },
    {
-    "gpu": "fixture",
-    "vllm_version": "0.26.0",
-    "event_schema_version": "vllm-0.26.0-map",
     "instance_id": "a",
     "dp_rank": 0,
     "group_idx": 0,

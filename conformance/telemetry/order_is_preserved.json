@@ -59,9 +59,6 @@
   },
   "records": [
    {
-    "gpu": "fixture",
-    "vllm_version": "0.26.0",
-    "event_schema_version": "vllm-0.26.0-map",
     "instance_id": "a",
     "dp_rank": 0,
     "group_idx": 0,
@@ -73,9 +70,6 @@
     "spec_kind": "full_attention"
    },
    {
-    "gpu": "fixture",
-    "vllm_version": "0.26.0",
-    "event_schema_version": "vllm-0.26.0-map",
     "instance_id": "b",
     "dp_rank": 0,
     "group_idx": 0,
@@ -87,9 +81,6 @@
     "spec_kind": "full_attention"
    },
    {
-    "gpu": "fixture",
-    "vllm_version": "0.26.0",
-    "event_schema_version": "vllm-0.26.0-map",
     "instance_id": "a",
     "dp_rank": 0,
     "group_idx": 0,
@@ -99,9 +90,6 @@
     "tier": "GPU"
    },
    {
-    "gpu": "fixture",
-    "vllm_version": "0.26.0",
-    "event_schema_version": "vllm-0.26.0-map",
     "instance_id": "b",
     "dp_rank": 0,
     "group_idx": 0,
@@ -111,9 +99,6 @@
     "tier": "GPU"
    },
    {
-    "gpu": "fixture",
-    "vllm_version": "0.26.0",
-    "event_schema_version": "vllm-0.26.0-map",
     "instance_id": "a",
     "dp_rank": 0,
     "group_idx": 0,

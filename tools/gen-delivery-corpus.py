@@ -39,7 +39,11 @@ INCARNATION = "1785153670000-4242"
 
 
 def base(kind, at_ms):
-    r = dict(PROVENANCE)
+    """The two fields every record carries (spec 2.2).
+
+    Provenance is not among them: it is stated once on the segment header, which builds itself
+    from PROVENANCE directly."""
+    r = {}
     r["kind"] = kind
     r["at_ms"] = at_ms
     return r
@@ -54,8 +58,10 @@ def segment_open(seq, at_ms):
     produce well-formed files nothing downstream would ever notice.
     """
     r = base("segment_open", at_ms)
-    # the segment declares which contract it conforms to, in-band, once
-    r["contract_version"] = "1.1"
+    # the header states everything the segment declares once: the contract it conforms to, its
+    # identity, and the producer's provenance, which a reader applies to every record in it
+    r.update(PROVENANCE)
+    r["contract_version"] = "1.2"
     r["incarnation"] = INCARNATION
     r["segment_seq"] = seq
     return r
