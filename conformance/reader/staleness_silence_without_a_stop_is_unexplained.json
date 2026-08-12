@@ -7,9 +7,11 @@
    {
     "kind": "segment_open",
     "at_ms": 1785153669000.0,
-    "contract_version": "1.1",
+    "contract_version": "1.3",
     "incarnation": "1785153600000-100",
-    "segment_seq": 0
+    "segment_seq": 0,
+    "heartbeat_secs": 60,
+    "max_segment_secs": 300
    },
    {
     "kind": "agent_start",
@@ -17,8 +19,6 @@
     "agent_version": "0.2.0",
     "egress": "raw",
     "endpoint_count": 1,
-    "heartbeat_secs": 60,
-    "max_segment_secs": 300,
     "max_payload_bytes": 1048576
    },
    {
@@ -70,9 +70,11 @@
    {
     "kind": "segment_open",
     "at_ms": 1785153669000.0,
-    "contract_version": "1.1",
+    "contract_version": "1.3",
     "incarnation": "1785153900000-200",
-    "segment_seq": 0
+    "segment_seq": 0,
+    "heartbeat_secs": 7200,
+    "max_segment_secs": 14400
    },
    {
     "kind": "agent_start",
@@ -80,8 +82,6 @@
     "agent_version": "0.2.0",
     "egress": "raw",
     "endpoint_count": 1,
-    "heartbeat_secs": 7200,
-    "max_segment_secs": 14400,
     "max_payload_bytes": 1048576
    },
    {

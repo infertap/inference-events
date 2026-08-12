@@ -115,7 +115,7 @@ RUN3 = "1785154200000-300"
 
 
 def segment(incarnation, seq, records, provenance=None, workload_class=None,
-            per_record_provenance=None, version="1.1"):
+            per_record_provenance=None, version="1.3"):
     """One sealed segment: the header the delivery contract demands, then the records.
 
     `provenance` and `workload_class` go on the HEADER and are declared once for the whole
@@ -135,6 +135,14 @@ def segment(incarnation, seq, records, provenance=None, workload_class=None,
         header.update(provenance)
     if workload_class is not None:
         header["workload_class"] = workload_class
+    # Spec 5.8, since 1.3: the liveness bounds are declared on EVERY header. An analysis window
+    # need not contain a start record, and a declaration a reader cannot reach is one it cannot
+    # apply -- the reason 3.4 already gives for the canary. A fixture states them through its
+    # `agent_start` for readability; they belong to the segment.
+    if version != "1.1":
+        start = next((r for r in records if r.get("kind") == "agent_start"), None)
+        header["heartbeat_secs"] = start.pop("heartbeat_secs", 60) if start else 60
+        header["max_segment_secs"] = start.pop("max_segment_secs", 300) if start else 300
     out = [header] + records
     if per_record_provenance is not None:
         out = [{**per_record_provenance, **r} for r in out]
@@ -297,7 +305,8 @@ def _legacy_seg(run, seq, prov):
     reader still meets across its retention window and must read from the header with no
     special handling.
     """
-    return segment(run, seq, [store("i0", "b1", T0 + 1000.0)], per_record_provenance=prov)
+    return segment(run, seq, [store("i0", "b1", T0 + 1000.0)],
+                   per_record_provenance=prov, version="1.1")
 
 
 FIXTURES = [

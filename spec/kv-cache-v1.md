@@ -300,8 +300,6 @@ MAY observe several instances.
 | `agent_version` | string | required | producer version |
 | `egress` | string | required | one of `pseudonymized` or `raw`. `raw` means identities are emitted unprotected and §3's key-space rules do not apply |
 | `endpoint_count` | integer | required | subscriptions configured |
-| `heartbeat_secs` | integer | required | declared heartbeat interval (§5.8) |
-| `max_segment_secs` | integer | required | declared maximum segment age (§5.8) |
 | `max_payload_bytes` | integer | required | largest inbound engine message accepted |
 | `key_epoch` | integer | conditional | present when identities are keyed (§3.3) |
 | `canary` | string | conditional | present when identities are keyed (§3.4) |
@@ -311,8 +309,8 @@ MAY observe several instances.
 
 ```json
 {"kind": "agent_start", "at_ms": 1785153670000.0, "agent_version": "0.0.0-fixture",
- "egress": "pseudonymized", "endpoint_count": 2, "heartbeat_secs": 60, "max_segment_secs": 300,
- "max_payload_bytes": 16777216, "key_epoch": 3, "canary": "2a0d53e8a23631a0e8ab966069f98f3c"}
+ "egress": "pseudonymized", "endpoint_count": 2, "max_payload_bytes": 16777216,
+ "key_epoch": 3, "canary": "2a0d53e8a23631a0e8ab966069f98f3c"}
 ```
 
 #### `heartbeat`
@@ -472,6 +470,8 @@ The first record of every segment, written before any other record in that segme
 | `segment_seq` | integer | required | position in that incarnation's sequence, from zero |
 | `contract_version` | string | required | the version of this contract the segment conforms to (§6.1) |
 | `workload_class` | string | optional | what this producer's traffic is FOR, in the operator's vocabulary (§2.7). Since 1.2 |
+| `heartbeat_secs` | integer | required | declared heartbeat interval (§5.8). Since 1.3 |
+| `max_segment_secs` | integer | required | declared maximum segment age (§5.8). Since 1.3 |
 
 *Example (informative), from `delivery/records`:*
 
@@ -802,7 +802,19 @@ carried portable identity (§3.1), and that the holders shared a key space (§3.
 ### 5.8 Liveness bounds
 
 A producer MUST emit a `heartbeat` at least every `heartbeat_secs`, and MUST seal a segment at least
-every `max_segment_secs`, both as declared in its `agent_start`. A producer MUST declare both.
+every `max_segment_secs`, both as declared on every `segment_open` it writes. A producer MUST
+declare both.
+
+**They moved off `agent_start` in 1.3, for the reason §3.4 already gives for the canary and §2.4
+for `reuse_reporting`: an analysis window need not contain a start record, and a declaration a
+reader cannot reach is one it cannot apply.** The bounds were the last declaration still reachable
+only through `agent_start`, which is written once per run while the records it qualifies outlive
+that segment — so whether a reader could judge staleness depended on a retention policy rather than
+on the data. A producer that runs longer than a reader keeps records became permanently
+unjudgeable, which is exactly the producer worth judging.
+
+The header carries them rather than the other lifecycle kinds, because §4 already requires every
+segment to begin with one: a segment containing no lifecycle record at all still declares.
 
 Those two bounds are the entire basis on which a reader can call a producer stale. Without them,
 silence from a producer is indistinguishable from a producer with nothing to report, and the
@@ -943,7 +955,7 @@ conformant when the cited sections hold; these tables exist so an implementer ca
 | One `store` per block, prefix chains resolved; runs never reach the wire | §2.3 | `telemetry/prefix_chain` |
 | An absent `clear` scope is treated as global, never defaulted | §2.3 | `vllm-wire/cleared_scope_undeclared` |
 | Lifecycle counters emitted at zero, not omitted | §2.4 | `lifecycle/records` |
-| Both liveness bounds declared in `agent_start` and honored | §2.4, §5.8 | `lifecycle/records`; named producer tests ([^liveness]) |
+| Both liveness bounds declared on every `segment_open` and honored | §2.4, §5.8 | `lifecycle/records`; named producer tests ([^liveness]) |
 | Identity-capacity losses declared per holder and window | §2.4 | `lifecycle/records` (`capacity_cases`) |
 | Reclamation declared, one `segments_dropped` per incarnation | §2.5 | `delivery/records` |
 | `content_id` satisfies every §3.1 property, or is omitted and counted | §3.1 | `pseudonym/vectors`, `telemetry/` |

@@ -15,8 +15,6 @@
    "config": {
     "endpoint_count": 2,
     "max_payload_bytes": 16777216,
-    "heartbeat_secs": 60,
-    "max_segment_secs": 300,
     "egress": "pseudonymized",
     "key_epoch": 3,
     "canary": "2a0d53e8a23631a0e8ab966069f98f3c",
@@ -28,8 +26,6 @@
     "agent_version": "0.0.0-fixture",
     "endpoint_count": 2,
     "max_payload_bytes": 16777216,
-    "heartbeat_secs": 60,
-    "max_segment_secs": 300,
     "egress": "pseudonymized",
     "key_epoch": 3,
     "canary": "2a0d53e8a23631a0e8ab966069f98f3c",

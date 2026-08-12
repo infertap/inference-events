@@ -13,7 +13,9 @@
     "gpu": "fixture",
     "vllm_version": "0.26.0",
     "event_schema_version": "vllm-0.26.0-map",
-    "workload_class": "agentic"
+    "workload_class": "agentic",
+    "heartbeat_secs": 60,
+    "max_segment_secs": 300
    },
    {
     "kind": "store",
@@ -34,7 +36,9 @@
     "provenance": {
      "gpu": "fixture",
      "vllm_version": "0.26.0",
-     "event_schema_version": "vllm-0.26.0-map"
+     "event_schema_version": "vllm-0.26.0-map",
+     "heartbeat_secs": 60,
+     "max_segment_secs": 300
     },
     "workload_class": "agentic"
    }
