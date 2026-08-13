@@ -833,7 +833,10 @@ finest resolution the stream carries. [^seq]
 **This section governs the write-ahead form; only it has lines.**
 
 A reader MUST accept an unparseable **final** line of a segment as an expected artifact of a producer
-that stopped mid-write, discard it, and count it.
+that stopped mid-write, and discard it. The discarded tail is not separately counted: a record lost
+at a segment's tail is a delivery loss like any other, and §4.2's sequence accounting is where loss
+is priced. A producer's own recovery already declares its truncation in-band (`dropped_bytes`,
+§2.5), so a reader-side count would be a second bookkeeping of the same bytes.
 
 An unparseable line in any other position indicates corruption rather than truncation, and a reader
 MUST fail closed on it. **Failing closed means the segment is not ingested and none of its records

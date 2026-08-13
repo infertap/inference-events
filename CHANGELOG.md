@@ -1,5 +1,18 @@
 # Changelog
 
+## v1.8, 2026-08-13
+
+§5.5 drops the reader's torn-tail count; the discard and the fail-closed rule stand.
+
+"Discard it, and count it" made the reader keep a second book on bytes the producer's own
+recovery already declares in-band (`dropped_bytes` on `segment_recovered`), and the shipped
+Parquet form cannot present a torn tail at all — an interrupted file does not open. Loss is
+priced where §4.2 already prices it: a missing `segment_seq` degrades the window. The reference
+reader's `tail_discards` counter retires with this clause, and the taint it used to carry
+arrives through the sequence-gap machinery instead, which has its own producer and fixture.
+
+Prose-only: no fixture moves, the corpus hash is unchanged, and no pin bump is owed.
+
 ## v1.7, 2026-08-13
 
 Parquet becomes the shipped form; JSON Lines becomes the write-ahead form; the record model is
