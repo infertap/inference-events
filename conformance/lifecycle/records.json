@@ -13,6 +13,7 @@
    "kind": "agent_start",
    "at_ms": 1785153670000.0,
    "config": {
+    "key_epoch": 3,
     "endpoint_count": 2,
     "max_payload_bytes": 16777216,
     "egress": "pseudonymized",
