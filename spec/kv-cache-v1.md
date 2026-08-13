@@ -36,8 +36,9 @@ writes it. An engine MAY emit records natively and be the producer; an adapter o
 engine's native telemetry MAY be the producer for it. The `vllm-wire` corpus documents one such
 adapter mapping, from a real engine's native events to conforming records.
 
-**Status.** v1.1 draft. Verified against a reference producer's code and conformance corpora on
-2026-08-06.
+**Status.** v1.7 draft. The write-ahead form is verified against a reference producer's code and
+conformance corpora (2026-08-06). §2.1's Parquet form is specified ahead of its producer, decided
+2026-08-13; its fixture is the corpus's Parquet twin of the sealed-segment fixture.
 
 **Conventions.** Normative requirements use the key words of BCP 14 (RFC 2119, as clarified by
 RFC 8174); they are normative only in uppercase. A reference written `§4.2` is to a numbered
@@ -52,7 +53,7 @@ would fail an implementation violating the requirement it hangs from.
 |---|---|
 | **producer** | the process that writes the record stream (either shape above) |
 | **reader** | any consumer interpreting the stream; bound by §5 |
-| **record** | one JSON object on one line (§2.1) |
+| **record** | one entry of the record model — a JSON object on one line in the write-ahead form, a row in the shipped form (§2.1) |
 | **segment** | the unit of exchange; only a *sealed* segment is complete (§4.1) |
 | **incarnation** | one run of one producer, an opaque token (§4.2) |
 | **instance** | one engine process, named by the operator as `instance_id` (§3.2) |
@@ -65,14 +66,42 @@ would fail an implementation violating the requirement it hangs from.
 
 ### 2.1 Encoding
 
-A record stream is **JSON Lines**: one JSON object per line, UTF-8 encoded, each line terminated by
-a single newline. There is no envelope and no framing.
+The record model is independent of any encoding. Two encodings are contractual, each first-class
+and chosen by role (since 1.7):
 
-A producer MUST NOT emit a record larger than **1 MiB**. A reader MAY reject a longer line as
-malformed and MUST be able to bound its parser accordingly. [^size]
+**JSON Lines is the write-ahead form**: one JSON object per line, UTF-8 encoded, each line
+terminated by a single newline. There is no envelope and no framing. A producer writes its active
+segment in this form, because a truncated line is recoverable and a truncated columnar file is
+not.
 
-A producer MUST emit exactly one JSON object per line. A reader MUST treat an unparseable line as
-described in §5.5.
+**Apache Parquet is the shipped form**: one file per sealed segment, rows in record order. A
+converting producer replaces a sealed segment's write-ahead file with its Parquet twin at seal,
+and MUST NOT present the Parquet file as sealed before it is complete and durable. A deployment
+that values crash-exactness over columnar reads MAY ship the write-ahead form instead; both forms
+are sealed segments, and a reader MUST accept either. [^forms]
+
+**A reader determines a segment's encoding from its content**, never from its filename (§4.1): a
+Parquet segment begins with the four bytes `PAR1`; a JSON Lines segment begins with a JSON object.
+[^dispatch]
+
+The record model is identical in both forms. In the Parquet form, each field the schema
+(`conformance/schema/records.json`) types is a column, and a row's null cell encodes *absent*
+(§2.2) — a present-but-empty value is a non-null empty value, so the absent-versus-empty
+distinction survives the encoding. Fields the schema does not type — provenance keys (§2.2) among
+them — ride in a map column named `extra` — a string value verbatim, any other value as its JSON text; a
+reader MUST treat an `extra` entry as it would the same field inline in the JSON form. Row order is record order:
+"MUST begin with" (§4.1) means row zero.
+
+A producer MUST compress Parquet column chunks with Snappy or not at all. This is the reader's
+capability floor; widening it is a contract version change, so a conforming reader never meets a
+codec it cannot open.
+
+A producer MUST NOT emit a record whose JSON Lines form exceeds **1 MiB**. A reader of the
+write-ahead form MAY reject a longer line as malformed and MUST be able to bound its parser
+accordingly. [^size]
+
+In the write-ahead form a producer MUST emit exactly one JSON object per line, and a reader MUST
+treat an unparseable line as described in §5.5, which governs that form alone.
 
 ### 2.2 Common fields
 
@@ -700,6 +729,12 @@ a segment that is still being written. Ingesting an in-progress segment is not m
 content will change, so a reader keyed on content will store every overlapping record twice.
 [^active]
 
+**In the Parquet form both properties are structural.** The footer that indexes the file is written
+at close, so a file interrupted mid-write does not open at all: "contains no partial record" is
+enforced by the encoding rather than promised by the producer. A conversion temporary
+(`.parquet.tmp`) is not a sealed segment and MUST NOT be shipped or ingested; the delivery corpus
+pins its exclusion.
+
 The filename convention is **informative**. A conforming reader derives nothing it needs from a
 filename. The `segment_open` header record is **normative**: it carries the segment's identity in
 the segment, so continuity survives any transport that preserves file contents, including transports
@@ -795,6 +830,8 @@ finest resolution the stream carries. [^seq]
 
 ### 5.5 Malformed input
 
+**This section governs the write-ahead form; only it has lines.**
+
 A reader MUST accept an unparseable **final** line of a segment as an expected artifact of a producer
 that stopped mid-write, discard it, and count it.
 
@@ -802,6 +839,11 @@ An unparseable line in any other position indicates corruption rather than trunc
 MUST fail closed on it. **Failing closed means the segment is not ingested and none of its records
 commit**: ingestion is all-or-nothing per segment, so a reader MUST NOT commit the records preceding
 a corrupt line. [^tail]
+
+A Parquet segment presents no line to parse. The shipped form is complete by construction (§4.1),
+so a reader MUST fail closed on a Parquet segment it cannot open: an unopenable file is corruption
+in transport, not truncation at source, and none of its records commit. The hole it leaves is a
+missing `segment_seq`, which §5.4 already prices.
 
 ### 5.6 The lower-bound rule
 
@@ -938,6 +980,14 @@ paragraph above governs without exception, and a change of this shape takes a ma
 contract that keeps granting itself exemptions is not a contract, so this one is written down with
 its expiry rather than left as precedent.
 
+**1.7 is minor by the same decision, and shares the same expiry.** Making Parquet the shipped form
+changes the meaning of §2.1, which the paragraph above prices as a major version. It is taken as
+minor because the 1.2 conditions hold verbatim: one producer, one reader, both in this
+organisation, no third party holding either. The reader side again does not break — a 1.7 reader
+dispatches on content (§2.1), so every segment ever written, all of them JSON Lines, reads exactly
+as before. When the 1.2 exemption expires, this one expires with it, and encoding changes of this
+shape take the major version the law prices them at.
+
 ### 6.2 The mixed-fleet law
 
 **Producer version skew is steady state, not an error condition.** A fleet is upgraded gradually, so
@@ -1035,6 +1085,15 @@ Each note names the fixture that would fail an implementation violating the requ
     refused and counted, never emitted and never fatal, pinned by a named test in the
     producer's own suite. That test is the covering artifact: a megabyte corpus blob would
     prove nothing it does not.
+
+[^forms]: `delivery/records.json` carries the sealed-segment fixture in both forms: the `segment`
+    object's `lines`, and the Parquet twin the object names in `parquet_twin` — the same records,
+    one file per encoding, written by a reference Parquet implementation rather than by ours. A
+    reader proves both halves of the MUST by decoding both to the same record sequence.
+
+[^dispatch]: The same fixture pair: the twin's first four bytes are `PAR1`, the JSONL fixture's
+    first byte opens a JSON object. A reader that dispatches on anything else — the suffix, a
+    manifest — has no covering fixture and is not conforming.
 
 [^absent]: `telemetry/tier_absent_stays_null`.
 
@@ -1242,7 +1301,7 @@ non-empty table gates publication of any release claiming conformance.
 ### Verification
 
 Field names, types and presence rules in §2 were extracted from the conformance corpora and checked
-against them, not transcribed. Last re-verified 2026-08-06, by recursive field-union extraction
+against them, not transcribed. Last re-verified 2026-08-13, by recursive field-union extraction
 across every corpus fixture compared against the §2 tables (provenance fields and fixture-harness
 keys excluded). The inline examples in §2 are extracted from the fixtures they cite, never
 composed by hand, and are covered by the same rule. The stamp refreshes whenever §2 or a corpus

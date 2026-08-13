@@ -6,24 +6,32 @@
  "active_segment": "active.jsonl",
  "sealed_prefix": "seg-",
  "orphan_prefix": "orphan-",
- "suffix": ".jsonl",
+ "wal_suffix": ".jsonl",
+ "shipped_suffixes": [".jsonl", ".parquet"],
+ "conversion_tmp_suffix": ".parquet.tmp",
 
- "sealed_pattern": "seg-<incarnation>-<segment_seq>.jsonl",
- "orphan_pattern": "orphan-<recovery_unix_ms>.jsonl",
+ "sealed_pattern": "seg-<incarnation>-<segment_seq>.jsonl | seg-<incarnation>-<segment_seq>.parquet",
+ "orphan_pattern": "orphan-<recovery_unix_ms>.jsonl | orphan-<recovery_unix_ms>.parquet",
  "incarnation_pattern": "<run_start_unix_ms>-<pid>",
 
- "ship_rule": "Ship and ingest everything except the file currently being written.",
- "shipper_exclude": "active.jsonl",
+ "ship_rule": "Ship and ingest only a sealed segment in its shipped form: never the file currently being written, never a conversion temporary, and in a converting deployment never the write-ahead JSONL awaiting conversion.",
+ "shipper_exclude": {
+  "jsonl_deployment": ["active.jsonl"],
+  "converting_deployment": ["active.jsonl", "*.jsonl", "*.parquet.tmp"]
+ },
 
  "rules": [
-  "Only the active segment is in flight. Everything else in the directory is terminal: the process that wrote it will not write to it again.",
-  "Terminal files ship, including ones that could not be attributed to an incarnation. A file whose records are complete but whose identity was lost to a crash is sealed under the orphan prefix rather than deleted; its records are attributable to an instance and to no sequence.",
+  "Two file classes are in flight: the active segment, and a conversion temporary in a converting deployment. Everything else in the directory is terminal: the process that wrote it will not write to it again.",
+  "Sealed segments ship in their shipped form, including ones that could not be attributed to an incarnation. A file whose records are complete but whose identity was lost to a crash is sealed under the orphan prefix rather than deleted; its records are attributable to an instance and to no sequence. In a converting deployment the write-ahead JSONL awaiting conversion is terminal to its writer but not shippable; its Parquet twin ships in its place.",
   "The active segment must never be shipped or ingested. It is not merely incomplete — its CONTENT WILL CHANGE, and batch identity downstream is the content hash, so reading it now and reading the sealed version later stores every overlapping record twice.",
   "Segment continuity is scoped to (instance, incarnation). A fresh incarnation starting at segment_seq 0 is a restart, not a gap.",
   "Identity lives in the file's first record (segment_open), not in its name. Filenames carry the same fields for the shipper and for humans, but binding correctness to them would bind it to a property of the transport rather than of the data.",
   "A shipper must treat a vanished source file as an expected outcome, not a retryable error: the disk-cap ring can unlink a segment between the shipper's listing and its open, and a shipper that stalls its queue on ENOENT converts a bounded, recorded drop into total shipping stoppage.",
   "Retention drops the OLDEST segments first, ordered by (incarnation, segment_seq) with seq compared as a NUMBER. What survives a disk-cap drop is therefore the newest data: a contiguous run of the highest seqs per incarnation. A consumer's coverage math rests on this — it is what makes a declared drop describable as a range, and what lets a surviving window be read as the most recent one. Comparing seq as a string silently inverts it, because `10` sorts before `9`: past ten segments the ring begins preferring newer data for deletion, which is a retention policy that fails exactly when it is needed.",
-  "A declared drop (segments_dropped) is emitted once PER INCARNATION whose segments were reclaimed, and its `incarnation` names the run whose data is gone rather than the process that did the dropping — one enforcement pass can reclaim an earlier run's segments, and the dropping process is readable from the enclosing segment's own header. Grouping is what keeps `first_seq`/`last_seq` a description: within one incarnation the dropped set is contiguous, across incarnations it never is."
+  "A declared drop (segments_dropped) is emitted once PER INCARNATION whose segments were reclaimed, and its `incarnation` names the run whose data is gone rather than the process that did the dropping — one enforcement pass can reclaim an earlier run's segments, and the dropping process is readable from the enclosing segment's own header. Grouping is what keeps `first_seq`/`last_seq` a description: within one incarnation the dropped set is contiguous, across incarnations it never is.",
+  "A reader learns a segment's encoding from its content, never from its suffix: a Parquet segment begins with the four bytes PAR1, a JSONL segment with a JSON object (spec 2.1). The suffixes here exist for the shipper and for humans, like the rest of the filename.",
+  "A converting deployment replaces a sealed segment's write-ahead JSONL with its Parquet twin: write the .parquet.tmp, fsync, verify its footer against the records written, rename to .parquet, fsync the directory, and only then delete the JSONL. The delete is last because deleting first would reintroduce, in a crash window, exactly the loss the write-ahead form exists to prevent. Recovery reconciles idempotently: sealed JSONL with no Parquet converts; both present deletes the JSONL, which is safe because a committed .parquet was verified before its rename; a stray .tmp is unlinked.",
+  "The conversion temporary is never terminal and never ships. It is the one file class in the directory besides the active segment whose content can change, and the shipper's exclusion of it is deterministic by name pattern, not timing."
  ],
 
  "asserted_by": [
