@@ -90,7 +90,12 @@ def canary(epoch):
     return hmac.new(key, msg, hashlib.sha256).hexdigest()[:32]
 
 
+# **The producer's configuration, which is not the same thing as what it emits.** Since contract
+# 1.5 a producer is configured with a key epoch and declares it on the segment header, not on
+# `agent_start` — so the two differ, and `NOT_ON_START` is what separates them. They were one dict
+# spread straight into the record, which made a config-only field unrepresentable.
 START_CONFIG = {
+    "key_epoch": 3,
     "endpoint_count": 2,
     "max_payload_bytes": 16777216,
     "egress": "pseudonymized",
@@ -101,6 +106,9 @@ START_CONFIG = {
     # forbids an insertion count rather than the one that would flatter it.
     "reuse_reporting": "unlabelled",
 }
+
+# Configured, never emitted on this record: 1.5 puts the epoch on the header.
+NOT_ON_START = {"key_epoch"}
 
 HEARTBEAT_STATS = {
     "canary": canary(3),
@@ -184,7 +192,7 @@ def identity_refused_case(at_ms):
 def main():
     start = base("agent_start", T0)
     start["agent_version"] = AGENT_VERSION
-    start.update(START_CONFIG)
+    start.update({k: v for k, v in START_CONFIG.items() if k not in NOT_ON_START})
 
     heartbeat = with_stats(base("heartbeat", T0 + 60000.0), HEARTBEAT_STATS)
 
