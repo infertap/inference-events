@@ -1,5 +1,22 @@
 # Changelog
 
+## v1.5, 2026-08-12
+
+`key_epoch` moves from `agent_start` to every `segment_open`.
+
+The fourth run-constant declaration to take this path, and the reasoning is §5.8's for the
+liveness bounds and §2.2's for provenance: it is constant for a producer run, a reader needs it
+to interpret every record behind it, and a declaration reachable only through a start record is
+one a retention policy can take away.
+
+**The epoch is already folded into each pseudonym**, so identities across a rotation cannot match
+whether or not a reader reads this field. Declaring it does not make the separation work — it
+already works. What it buys is that a reader can SAY which epoch a figure belongs to, and can see
+a boundary rather than infer it from identities ceasing to match, which is indistinguishable from
+a fleet with nothing in common.
+
+It is the operator's declaration, set alongside the key material whose generations it counts.
+
 ## v1.4, 2026-08-12
 
 The record schema becomes a machine-readable artifact.
