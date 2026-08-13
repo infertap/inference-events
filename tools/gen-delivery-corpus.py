@@ -66,6 +66,9 @@ def segment_open(seq, at_ms):
     # reader may call this producer stale, and an analysis window need not contain a start record.
     r["heartbeat_secs"] = 60
     r["max_segment_secs"] = 300
+    # 3.3, since 1.5: the epoch scoping this segment's identity space, declared where every other
+    # run-constant fact is
+    r["key_epoch"] = 3
     r["incarnation"] = INCARNATION
     r["segment_seq"] = seq
     return r

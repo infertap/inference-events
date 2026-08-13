@@ -64,10 +64,6 @@
      "type": "int64",
      "presence": "required"
     },
-    "key_epoch": {
-     "type": "int64",
-     "presence": "conditional"
-    },
     "canary": {
      "type": "utf8",
      "presence": "conditional"
@@ -335,6 +331,10 @@
     "max_segment_secs": {
      "type": "int64",
      "presence": "required"
+    },
+    "key_epoch": {
+     "type": "int64",
+     "presence": "conditional"
     }
    }
   },

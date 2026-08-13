@@ -301,7 +301,6 @@ MAY observe several instances.
 | `egress` | string | required | one of `pseudonymized` or `raw`. `raw` means identities are emitted unprotected and §3's key-space rules do not apply |
 | `endpoint_count` | integer | required | subscriptions configured |
 | `max_payload_bytes` | integer | required | largest inbound engine message accepted |
-| `key_epoch` | integer | conditional | present when identities are keyed (§3.3) |
 | `canary` | string | conditional | present when identities are keyed (§3.4) |
 | `reuse_reporting` | string | optional | as `heartbeat` |
 
@@ -310,7 +309,7 @@ MAY observe several instances.
 ```json
 {"kind": "agent_start", "at_ms": 1785153670000.0, "agent_version": "0.0.0-fixture",
  "egress": "pseudonymized", "endpoint_count": 2, "max_payload_bytes": 16777216,
- "key_epoch": 3, "canary": "2a0d53e8a23631a0e8ab966069f98f3c"}
+ "canary": "2a0d53e8a23631a0e8ab966069f98f3c"}
 ```
 
 #### `heartbeat`
@@ -480,6 +479,7 @@ The first record of every segment, written before any other record in that segme
 | `workload_class` | string | optional | what this producer's traffic is FOR, in the operator's vocabulary (§2.7). Since 1.2 |
 | `heartbeat_secs` | integer | required | declared heartbeat interval (§5.8). Since 1.3 |
 | `max_segment_secs` | integer | required | declared maximum segment age (§5.8). Since 1.3 |
+| `key_epoch` | integer | conditional | present when identities are keyed (§3.3). Since 1.5 |
 
 *Example (informative), from `delivery/records`:*
 
@@ -639,6 +639,17 @@ together but MUST NOT read absence as an assertion that the engine has a single 
 
 `key_epoch` scopes an identity space. Identities carrying different `key_epoch` values were derived
 under different key material or a different generation of it, and are unrelated.
+
+**A producer declares it on every `segment_open`** (since 1.5), for the reason §5.8 gives for the
+liveness bounds and §2.2 for provenance: it is constant for a producer run, a reader needs it to
+interpret every record behind it, and a declaration reachable only through a start record is one a
+retention policy can take away. It is the operator's, set alongside the key material it counts
+generations of.
+
+**The epoch is already folded into each pseudonym**, so identities across a rotation cannot match
+whether or not a reader reads this field. Declaring it is what lets a reader SAY which epoch a
+figure belongs to, and check a boundary it would otherwise only infer from identities ceasing to
+match — which is indistinguishable from a fleet with nothing in common.
 
 A reader MUST NOT compare identities across `key_epoch` values, and MUST treat an epoch boundary as
 a discontinuity in block-level accounting rather than as continuous history. Figures on either side
