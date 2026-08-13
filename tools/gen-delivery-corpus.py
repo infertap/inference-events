@@ -161,8 +161,11 @@ def main():
     segment = {
         "note": "one sealed segment as shipped. The header is first and every later record "
         "belongs to its incarnation; that containment is the contract, not a convention of "
-        "this fixture.",
+        "this fixture. parquet_twin names the same records in the shipped Parquet form "
+        "(spec 2.1), generated from this object by tools/gen-parquet-twin.py; decoding "
+        "both to the same record sequence is what a reader proves.",
         "filename": f"seg-{INCARNATION}-0.jsonl",
+        "parquet_twin": f"seg-{INCARNATION}-0.parquet",
         "incarnation": INCARNATION,
         "lines": [
             segment_open(0, T0),
