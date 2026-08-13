@@ -221,8 +221,15 @@ A block left a cache.
 | field | type | presence | meaning |
 |---|---|---|---|
 | `kind` | `"evict"` | required | |
-| `at_ms`, `instance_id`, `block_id` | | required | as `store` |
-| `dp_rank`, `group_idx`, `content_id`, `locality`, `tier`, `seq` | | optional | as `store` |
+| `at_ms` | number | required | engine clock |
+| `instance_id` | string | required | the engine process whose cache the block left (§3.2) |
+| `block_id` | string | required | engine-local identity (§3.1), the same value its `store` carried |
+| `tier` | string | optional | storage tier the block left. A block offloaded to another tier is evicted from the one it left |
+| `dp_rank` | integer | optional | the data parallel worker within that instance (§3.2) |
+| `group_idx` | integer | optional | the cache group within that worker (§3.2) |
+| `content_id` | string | optional | portable identity (§3.1), resolved by the producer as described below |
+| `locality` | string | optional | `LOCAL` or `REMOTE`, relative to the publishing holder |
+| `seq` | integer | optional | transport sequence of the message that carried this event |
 
 `content_id` on an evict is resolved by the producer at capture time, through state built when
 the block was stored. Because `block_id` rides both stores and evicts, the stream also lets a

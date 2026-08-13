@@ -1,5 +1,30 @@
 # Changelog
 
+## v1.6, 2026-08-12
+
+`evict` states every field, and the corpora are checked against the schema.
+
+**`evict` used a shorthand and the schema said it had one field.** Two rows named several
+fields at once with an empty type cell and `as \`store\`` for the type, so the generator matched
+neither and emitted an `evict` carrying `kind` alone. Anything building a columnar schema from
+v1.4 or v1.5 would have produced an evict with no `block_id`, no `at_ms`, no `instance_id`.
+
+Both of the generator's guards passed. The heading count matched, because `evict` has a heading.
+The row count matched, because **the counter used the parser's own regex** — a row the parser
+could not read was not counted as present either, so the check compared the parser against
+itself. A self-consistent parser is trivially self-consistent. The counter is now an independent
+measure of a table line, and a row shape the parser cannot read is a hard error naming the fix.
+
+The shorthand is gone rather than taught: every field states its own type, because a shorthand
+is a second grammar and this document is read by machines now.
+
+**`tools/check-corpora.py` walks every fixture against the schema.** Three changes in one day
+landed in one generator and not another, and each was caught downstream by an implementation
+whose test compared its output against a fixture — the contract was internally inconsistent and
+only a consumer noticed. Containers are enumerated rather than sniffed, because an object with
+`kind` and `at_ms` is a lifecycle CASE as often as a record, and guessing a shape is the same
+mistake as guessing a type. Verified against a retired field and a one-letter typo.
+
 ## v1.5, 2026-08-12
 
 `key_epoch` moves from `agent_start` to every `segment_open`.

@@ -94,7 +94,6 @@ START_CONFIG = {
     "endpoint_count": 2,
     "max_payload_bytes": 16777216,
     "egress": "pseudonymized",
-    "key_epoch": 3,
     "canary": canary(3),
     # The declaration rides the boot record AND every heartbeat. Here it is "unlabelled":
     # the reference engine announces cache reuse with the same event it uses for a fresh

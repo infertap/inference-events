@@ -123,8 +123,17 @@ def main():
     if endpoints is None:
         raise SystemExit("the `endpoints` element table was not found")
 
-    # **Every row in those sections must have been consumed.** A table the parser walked past is
-    # a field absent from the schema and present in the contract, which is the silent shape.
+    # **Every field row in those sections must have been consumed, counted INDEPENDENTLY.**
+    #
+    # The first version of this guard counted rows with `ROW` -- the parser's own regex -- so a row
+    # the parser could not read was not counted as present either, and the check compared the
+    # parser against itself. It passed while `evict` carried one field, because that table used a
+    # comma-separated shorthand `ROW` did not match and the counter did not see. A self-consistent
+    # parser is trivially self-consistent.
+    #
+    # The counter here is a different measure: a table line inside 2.3 to 2.5 that is not the
+    # header or the separator is a field row, whatever its shape. A row this cannot parse is now
+    # a hard error rather than an absence.
     present = 0
     section = None
     for line in lines:
@@ -133,12 +142,17 @@ def main():
             section = m.group(1)
         elif line.startswith("## "):
             section = None
-        if section in ("2.3", "2.4", "2.5") and ROW.match(line):
-            present += 1
+        if section not in ("2.3", "2.4", "2.5"):
+            continue
+        t = line.strip()
+        if not t.startswith("|") or t.startswith("| field ") or set(t) <= set("|- "):
+            continue
+        present += 1
     if consumed != present:
         raise SystemExit(
-            f"parsed {consumed} field rows but sections 2.3-2.5 contain {present}: "
-            "a table was skipped, and a skipped table is a field the schema silently lacks"
+            f"parsed {consumed} field rows but sections 2.3-2.5 contain {present}: a row shape "
+            "this parser cannot read is a field the schema silently lacks. State every field on "
+            "its own row with its own type -- a shorthand is a second grammar."
         )
 
     doc = {

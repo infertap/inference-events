@@ -185,6 +185,42 @@
      "type": "utf8",
      "presence": "required",
      "const": "evict"
+    },
+    "at_ms": {
+     "type": "float64",
+     "presence": "required"
+    },
+    "instance_id": {
+     "type": "utf8",
+     "presence": "required"
+    },
+    "block_id": {
+     "type": "utf8",
+     "presence": "required"
+    },
+    "tier": {
+     "type": "utf8",
+     "presence": "optional"
+    },
+    "dp_rank": {
+     "type": "int64",
+     "presence": "optional"
+    },
+    "group_idx": {
+     "type": "int64",
+     "presence": "optional"
+    },
+    "content_id": {
+     "type": "utf8",
+     "presence": "optional"
+    },
+    "locality": {
+     "type": "utf8",
+     "presence": "optional"
+    },
+    "seq": {
+     "type": "int64",
+     "presence": "optional"
     }
    }
   },

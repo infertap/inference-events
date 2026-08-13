@@ -16,7 +16,6 @@
     "endpoint_count": 2,
     "max_payload_bytes": 16777216,
     "egress": "pseudonymized",
-    "key_epoch": 3,
     "canary": "2a0d53e8a23631a0e8ab966069f98f3c",
     "reuse_reporting": "unlabelled"
    },
@@ -27,7 +26,6 @@
     "endpoint_count": 2,
     "max_payload_bytes": 16777216,
     "egress": "pseudonymized",
-    "key_epoch": 3,
     "canary": "2a0d53e8a23631a0e8ab966069f98f3c",
     "reuse_reporting": "unlabelled"
    }
