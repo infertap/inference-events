@@ -925,14 +925,16 @@ FIXTURES = [
      {"gap_degraded": []}),
 
     ("staleness_without_declared_bounds_has_no_basis",
-     "a mid-run segment (seq 1; the segment carrying the agent_start is not in the "
-     "stream): heartbeats, then silence past any bound a reader might guess. The two "
-     "declared bounds are the ENTIRE basis for calling a producer stale (spec 5.8), and "
-     "unobserved declarations are outside the stream's knowledge (spec 5.6) -- so a "
-     "conforming reader refuses the staleness verdict rather than inventing a threshold",
+     "a 1.1-era producer's mid-run segment: heartbeats, then silence past any bound a "
+     "reader might guess. Since 1.3 every header declares the bounds, so an undeclared "
+     "stream is only expressible as an old producer the mixed-fleet law (spec 6.2) still "
+     "admits -- and for it the premise holds exactly: the two declared bounds are the "
+     "ENTIRE basis for calling a producer stale (spec 5.8), unobserved declarations are "
+     "outside the stream's knowledge (spec 5.6), and a conforming reader refuses the "
+     "verdict rather than inventing a threshold",
      [segment(RUN1, 1, [
          heartbeat(T0 + 60_000.0, 10),
-         heartbeat(T0 + 120_000.0, 20)]),
+         heartbeat(T0 + 120_000.0, 20)], version="1.1"),
       horizon_producer()],
      {"staleness": {RUN1: "no_basis", RUN2: "live"}}),
     # --- 2.2 / 2.7: run-constant fields ride the header (since 1.2) ---------------------
