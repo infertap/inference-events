@@ -21,6 +21,11 @@ rule: only sealed Parquet ships.
 Minor by the standing exemption, sharing its expiry. Rationale and the vestigial-clause finding
 are recorded in the analyzer repo's rulings for 2026-08-14.
 
+**Addendum, same day:** the fixtures' declared `contract_version` catches up from "1.3" to
+"1.9". The fixture declares what the reference producer declares, and the producer had lagged
+its own contract by six versions; the declaration is opaque to every grader (§6.2), so no
+verdict moves.
+
 ## v1.8, 2026-08-13
 
 §5.5 drops the reader's torn-tail count; the discard and the fail-closed rule stand.

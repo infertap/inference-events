@@ -26,7 +26,7 @@
    {
     "kind": "segment_open",
     "at_ms": 1785153669000.0,
-    "contract_version": "1.3",
+    "contract_version": "1.9",
     "incarnation": "1785153900000-200",
     "segment_seq": 0,
     "heartbeat_secs": 60,
