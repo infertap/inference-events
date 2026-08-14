@@ -1,5 +1,26 @@
 # Changelog
 
+## v1.9, 2026-08-14
+
+JSON Lines retires as a shipped form. Parquet is the shipped form; the write-ahead JSONL never
+leaves the producer's node.
+
+**The clause this deletes was vestigial.** "A deployment that values crash-exactness MAY ship
+the write-ahead form" was written against Parquet-at-source, where writing columnar directly
+really did regress the crash story. Convert-at-seal ended that trade: the WAL is JSONL either
+way, conversion happens after the seal, and the twin is verified before the WAL is deleted — so
+a crash costs the same zero records with conversion on or off. A mode that protects nothing
+bought two shipping configurations, mode-dependent excludes, and prose in three repositories
+explaining a distinction without a difference.
+
+**Readers still accept both encodings, dispatching on content.** The acceptance is defensive and
+the conformance corpus exercises it; what changes is the producer's side — shipping the
+write-ahead form is now non-conforming. `layout.json` collapses to one exclude list and one ship
+rule: only sealed Parquet ships.
+
+Minor by the standing exemption, sharing its expiry. Rationale and the vestigial-clause finding
+are recorded in the analyzer repo's rulings for 2026-08-14.
+
 ## v1.8, 2026-08-13
 
 §5.5 drops the reader's torn-tail count; the discard and the fail-closed rule stand.

@@ -66,19 +66,20 @@ would fail an implementation violating the requirement it hangs from.
 
 ### 2.1 Encoding
 
-The record model is independent of any encoding. Two encodings are contractual, each first-class
-and chosen by role (since 1.7):
+The record model is independent of any encoding. Two encodings are contractual, each with one
+role (since 1.7; the roles made exclusive in 1.9):
 
-**JSON Lines is the write-ahead form**: one JSON object per line, UTF-8 encoded, each line
-terminated by a single newline. There is no envelope and no framing. A producer writes its active
-segment in this form, because a truncated line is recoverable and a truncated columnar file is
-not.
+**JSON Lines is the write-ahead form, and only that**: one JSON object per line, UTF-8 encoded,
+each line terminated by a single newline. There is no envelope and no framing. A producer writes
+its active segment in this form, because a truncated line is recoverable and a truncated columnar
+file is not. The write-ahead form never leaves the producer's node.
 
 **Apache Parquet is the shipped form**: one file per sealed segment, rows in record order. A
-converting producer replaces a sealed segment's write-ahead file with its Parquet twin at seal,
-and MUST NOT present the Parquet file as sealed before it is complete and durable. A deployment
-that values crash-exactness over columnar reads MAY ship the write-ahead form instead; both forms
-are sealed segments, and a reader MUST accept either. [^forms]
+producer replaces a sealed segment's write-ahead file with its Parquet twin at seal, MUST NOT
+present the Parquet file as sealed before it is complete and durable, and MUST NOT ship a segment
+in any other encoding. A reader MUST still accept either encoding, dispatching on content: the
+acceptance is defensive and it is what the conformance corpus exercises, but a producer that
+ships the write-ahead form is not conforming. [^forms]
 
 **A reader determines a segment's encoding from its content**, never from its filename (§4.1): a
 Parquet segment begins with the four bytes `PAR1`; a JSON Lines segment begins with a JSON object.
