@@ -37,6 +37,12 @@ Corpus: `telemetry/holder_reset_closes_the_scope`, cross-verified against the re
 producer's transducer before blessing. The synthesis itself spans two messages, which the
 single-message wire corpus cannot express; the reference producer's subscriber tests pin it.
 
+**Addendum, same day:** the declared `contract_version` catches up from "1.9" to "1.10", in
+the fixtures and the reference producer together this time — v1.9's addendum documented the
+producer lagging its own contract by six versions, and a producer emitting this version's
+record kind under last version's declaration would be the same defect with a worse sign: not
+stale, false. The declaration is opaque to every grader (§6.2), so no verdict moves.
+
 ## v1.9, 2026-08-14
 
 JSON Lines retires as a shipped form. Parquet is the shipped form; the write-ahead JSONL never

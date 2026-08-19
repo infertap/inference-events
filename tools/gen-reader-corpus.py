@@ -115,7 +115,7 @@ RUN3 = "1785154200000-300"
 
 
 def segment(incarnation, seq, records, provenance=None, workload_class=None,
-            per_record_provenance=None, version="1.9"):
+            per_record_provenance=None, version="1.10"):
     """One sealed segment: the header the delivery contract demands, then the records.
 
     `provenance` and `workload_class` go on the HEADER and are declared once for the whole
