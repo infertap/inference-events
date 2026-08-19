@@ -323,6 +323,56 @@ named holder and scope at `at_ms`, rather than matching identities. [^clear]
  "scope": "all", "tier": "GPU"}
 ```
 
+#### `holder_reset`
+
+The producer observed that a holder's engine process restarted: the publisher's transport
+sequence regressed, so every block that cache held is gone — and the engine said nothing,
+because a fresh engine has nothing to clear.
+
+Unlike `clear`, this record reports an *observation the producer stands behind* rather than an
+engine announcement. The reference engine emits its cleared event from exactly one place, a
+runtime cache reset, and emits nothing at startup; the sequence regression is the only wire
+evidence a restart leaves. A producer that detects one MUST say so, rather than leaving the
+reader to fold one residency across an outage during which the cache did not exist.
+
+| field | type | presence | meaning |
+|---|---|---|---|
+| `kind` | `"holder_reset"` | required | |
+| `at_ms` | number | required | producer clock at detection (§2.6) |
+| `instance_id` | string | required | the engine the regressed source observes (§3.2) |
+| `dp_rank` | integer | optional | the worker whose publisher regressed; **absent means the source hosts every rank and the reset is global across workers** |
+| `group_idx` | integer | optional | as `dp_rank`; a producer deriving the reset from a sequence regression MUST omit it, because a process restart is never group-scoped |
+| `boundary_ms` | number | required | **engine clock**: the earliest event timestamp in the regressed message — the instant the reset is ordered at |
+| `seq` | integer | optional | the regressed sequence number, as the wire carried it |
+
+`at_ms` and `boundary_ms` are different clock domains riding one record, exactly as
+`identity_refused`'s window fields, and MUST NOT be compared with each other (§2.6).
+
+A `holder_reset` carries no block identity. A reader MUST close every residency it is tracking
+under the named scope at `boundary_ms`, ordering the close before any cache record carrying
+the same timestamp — a store at the reset's own instant belongs to the fresh cache and opens a
+new residency. A producer MUST emit the record before any cache record decoded from the
+regressed message, so stream order and timestamp order agree.
+
+The boundary is also an identity boundary. Engine-space ids are comparable only within one
+process (§3.1); this record is what makes that process boundary visible, so a reader MUST NOT
+match a `block_id` across it. `content_id` is unaffected — content identity is deliberately
+seed-independent, so a re-store of the same content after the boundary is the same content in
+a **new** residency, never a re-admit of the old one.
+
+The window between the last event before the regression and `boundary_ms` is not an uncovered
+window (§5.3): the producer was observing throughout, and what it observed is that the cache
+ceased to exist. Residency there is zero, which is exactly what closing the intervals encodes.
+[^holder_reset]
+
+*Example (informative), from `telemetry/holder_reset_closes_the_scope`. `at_ms` is the
+producer clock; `boundary_ms` is the engine clock of the first post-restart event:*
+
+```json
+{"kind": "holder_reset", "at_ms": 1785153730000.0, "instance_id": "a", "dp_rank": 0,
+ "boundary_ms": 1785153690000.0, "seq": 1}
+```
+
 ### 2.4 Producer lifecycle records
 
 These describe the producer process, not a cache. They carry no `instance_id`, because one producer
@@ -383,6 +433,7 @@ Each `endpoints` element carries:
 | `dropped` | integer | required | inbound messages known lost on this subscription |
 | `last_msg_at_ms` | number | optional | producer clock at the last message, absent where none has arrived |
 | `topic` | string | optional | the channel name the transport supplied, relayed verbatim (below) |
+| `publisher_restarts` | integer | optional | sequence regressions observed on this subscription; the envelope's `publisher_restarts` is their sum, and `holder_reset` (§2.3) is the record a reader acts on |
 
 **`reuse_reporting` rides all three lifecycle kinds**, exactly as the canary does and for the
 same reason (§3.4): an analysis window need not contain a start record, and a declaration a
@@ -798,6 +849,10 @@ rule. [^multi]
 A reader MUST treat a fresh incarnation beginning at `segment_seq` zero as a **restart**, and MUST
 NOT report it as a gap. [^restart]
 
+An **engine** restart is a different event with a different record: the producer stays up,
+observes the publisher's sequence regress, and emits `holder_reset` (§2.3). One word, two
+processes — this section is about the producer's own.
+
 ### 5.3 The incarnation boundary is uncovered
 
 A reader MUST treat the interval between one incarnation's last observation and the next
@@ -828,6 +883,11 @@ two different sequences and would silently exonerate a window nothing observed. 
 either side, the reader has no bracket at all. A reader MUST NOT narrow past the observed bracket to
 the message itself: the records derived from one message share its `seq`, so the bracket is the
 finest resolution the stream carries. [^seq]
+
+The wire sequence also restarts with the **publisher**, inside one producer incarnation. A
+bracket MUST NOT span a `holder_reset` for its scope (§2.3): the numbers either side of one
+come from two different sequences, and a bracket across it would exonerate the exact window
+the reset closed.
 
 ### 5.5 Malformed input
 
@@ -1145,6 +1205,11 @@ Each note names the fixture that would fail an implementation violating the requ
     defines none.
 
 [^clear]: `telemetry/clear_is_scope_level`, with producer-side input `vllm-wire/cleared_all`.
+
+[^holder_reset]: `telemetry/holder_reset_closes_the_scope` pins the record shape and the
+    emit-before-the-regressed-events ordering. The synthesis itself — sequence regression to
+    record — spans two messages, which the single-message wire corpus cannot express; it is
+    pinned by the reference producer's own subscriber tests.
 
 [^counters]: `lifecycle/records` pins all three lifecycle kinds byte for byte, including counters at
     zero.

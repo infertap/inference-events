@@ -26,6 +26,10 @@
    "type": "int64",
    "presence": "required"
   },
+  "publisher_restarts": {
+   "type": "int64",
+   "presence": "optional"
+  },
   "source": {
    "type": "utf8",
    "presence": "required"
@@ -289,6 +293,40 @@
      "presence": "optional"
     },
     "rss_bytes": {
+     "type": "int64",
+     "presence": "optional"
+    }
+   }
+  },
+  "holder_reset": {
+   "section": "2.3",
+   "fields": {
+    "kind": {
+     "type": "utf8",
+     "presence": "required",
+     "const": "holder_reset"
+    },
+    "at_ms": {
+     "type": "float64",
+     "presence": "required"
+    },
+    "instance_id": {
+     "type": "utf8",
+     "presence": "required"
+    },
+    "dp_rank": {
+     "type": "int64",
+     "presence": "optional"
+    },
+    "group_idx": {
+     "type": "int64",
+     "presence": "optional"
+    },
+    "boundary_ms": {
+     "type": "float64",
+     "presence": "required"
+    },
+    "seq": {
      "type": "int64",
      "presence": "optional"
     }

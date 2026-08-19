@@ -141,6 +141,10 @@ HEARTBEAT_STATS = {
             # the deployment's, so recognizing one is a reader's business and a producer
             # that split it would be publishing an interpretation as a fact
             "topic": "kv@10.0.1.7:8000@meta-llama/Llama-3.1-8B-Instruct",
+            # the envelope's publisher_restarts (1, above) scoped to its source: the sum
+            # discards WHICH subscription regressed, and this entry is that scope. Zero on
+            # the sibling is a measurement, not an omission (spec 2.4)
+            "publisher_restarts": 1,
         },
         # nothing seen yet on this one: last_msg_at_ms is ABSENT, not null
         {
@@ -149,6 +153,7 @@ HEARTBEAT_STATS = {
             "msgs_seen": 0,
             "dropped": 0,
             "last_msg_at_ms": None,
+            "publisher_restarts": 0,
         },
     ],
 }

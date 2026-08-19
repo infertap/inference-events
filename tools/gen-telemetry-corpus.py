@@ -48,7 +48,7 @@ def record(ev):
     # shape is ASSUMED -- never observed live -- so its scope is transduced as declared: a
     # dimension the event does not carry is omitted from the record, because the producer
     # holds no scope claim there and an invented zero would read as one.
-    if ev["type"] == "Cleared":
+    if ev["type"] in ("Cleared", "HolderReset"):
         if ev.get("dp_rank") is not None:
             r["dp_rank"] = ev["dp_rank"]
         if ev.get("group_idx") is not None:
@@ -108,6 +108,14 @@ def record(ev):
             r["locality"] = ev["locality"]
         if ev.get("content_id") is not None:
             r["content_id"] = str(ev["content_id"])
+    elif ev["type"] == "HolderReset":
+        # ONE scope-level record, like a clear: the producer observed the publisher's
+        # sequence regress, so the cache is gone and nothing on the wire says so. It names
+        # no blocks; expansion over open residencies is the consumer's job. at_ms is the
+        # producer clock at detection and boundary_ms the engine clock the reader orders
+        # the close at -- two domains on one record, never compared (spec 2.6).
+        r["kind"] = "holder_reset"
+        r["boundary_ms"] = ev["boundary_ms"]
     elif ev["type"] == "Cleared":
         # ONE scope-level record. The wire does not enumerate the cleared blocks, so neither
         # does the agent; expansion is the consumer's job against its own residency model.
@@ -140,6 +148,22 @@ def removed(source, h, at_ms, **kw):
     e = {"source": source, "type": "Removed", "at_ms": at_ms, "block_hash": h, "medium": "GPU"}
     e.update(kw)
     return e
+
+
+def holder_reset(source, at_ms, boundary_ms, **kw):
+    # at_ms is the PRODUCER clock at detection; boundary_ms the ENGINE clock the reader
+    # orders the close at (spec 2.3 holder_reset, 2.6). Scoped to one rank by default, like
+    # the fully scoped clear; never a group_idx, because a process restart is never
+    # group-scoped.
+    e = {
+        "source": source,
+        "type": "HolderReset",
+        "at_ms": at_ms,
+        "boundary_ms": boundary_ms,
+        "dp_rank": 0,
+    }
+    e.update(kw)
+    return {k: v for k, v in e.items() if v is not None}
 
 
 def cleared(source, at_ms, **kw):
@@ -223,6 +247,16 @@ FIXTURES = [
      "of this instance and tier -- never just holder zero",
      [stored("a", H1, T0, dp_rank=0), stored("a", H2, T0 + 10.0, dp_rank=1),
       cleared("a", T0 + 20.0, dp_rank=None, group_idx=None)]),
+
+    ("holder_reset_closes_the_scope",
+     "the producer observed a publisher sequence regression: the engine restarted and its "
+     "cache is gone, announced by nothing on the wire. ONE scope-level record, emitted "
+     "before the regressed message's own events so stream order and timestamp order agree; "
+     "it names no blocks, and expansion over open residencies is the consumer's job. The "
+     "boundary-instant store belongs to the fresh cache: closes sort before stores",
+     [stored("a", H1, T0, seq=100),
+      holder_reset("a", T0 + 61_000.0, T0 + 1000.0, seq=1),
+      stored("a", H1, T0 + 1000.0, seq=1)]),
 
     ("same_hash_distinct_dp_ranks",
      "IDENTITY SCOPE: the same block hash from two data-parallel workers is two different "

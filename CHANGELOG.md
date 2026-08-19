@@ -1,5 +1,42 @@
 # Changelog
 
+## v1.10, 2026-08-18
+
+A new cache-record kind: `holder_reset` (§2.3). The producer observed a publisher sequence
+regression — the engine restarted and its cache is gone — and nothing on the wire says so,
+because the reference engine emits its cleared event from exactly one place, a runtime cache
+reset, and emits nothing at startup.
+
+**The defect this closes was demonstrated before it was designed around.** Without the record,
+a reader's fold puts pre-restart and post-restart stores of the same content into one residency
+carrying a re-admit: residency overstated across an outage during which the cache did not
+exist, and co-residency manufactured into the duplication figure. Absent the record, one
+interval is the HONEST reading of the evidence — a reader must not invent a boundary — which is
+exactly why emitting it is the producer's obligation, never a reader's inference.
+
+The record is scope-level, the `clear` doctrine one level up: it names no blocks, and expansion
+over open residencies is the consumer's job. Two clock domains ride it under the
+`identity_refused` convention — `at_ms` is the producer clock at detection, `boundary_ms` the
+engine clock the close is ordered at, stamped from the regressed message's earliest event. The
+same-instant tie-break (closes sort before stores) is what makes that stamp safe: a store at
+the boundary belongs to the fresh cache. The producer emits the record before any cache record
+decoded from the regressed message, so stream order and timestamp order agree.
+
+The boundary is also an identity boundary: engine-space ids are comparable only within one
+process (§3.1), and this record is what makes the process boundary visible. `content_id` is
+unaffected — a re-store of the same content after the boundary is the same content in a new
+residency, never a re-admit of the old one.
+
+Two smaller changes ride along. §2.4's per-endpoint entries gain an optional
+`publisher_restarts`: the envelope total's scope, which the sum discards. And §5.4 closes a
+latent hole the new record exposed — the wire sequence restarts with the PUBLISHER inside one
+producer incarnation, so a narrowing bracket MUST NOT span a `holder_reset` for its scope;
+without that rule, narrowing could exonerate the exact window the reset closed.
+
+Corpus: `telemetry/holder_reset_closes_the_scope`, cross-verified against the reference
+producer's transducer before blessing. The synthesis itself spans two messages, which the
+single-message wire corpus cannot express; the reference producer's subscriber tests pin it.
+
 ## v1.9, 2026-08-14
 
 JSON Lines retires as a shipped form. Parquet is the shipped form; the write-ahead JSONL never
