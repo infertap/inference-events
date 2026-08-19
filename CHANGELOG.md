@@ -1,5 +1,28 @@
 # Changelog
 
+## Corpus, 2026-08-19 — no contract movement
+
+The record model is unchanged and `contract_version` stays 1.10; this entry moves fixtures.
+
+**The delivery segment gains a heartbeat, for the endpoints column above all.** `endpoints`
+is the record model's only nested column — a list of the closed element — and the sealed
+segment's Parquet twin is therefore the only place its SHIPPED shape can be pinned. Until now
+no delivery fixture carried a heartbeat, so nothing pinned it: the reference analyzer shipped
+a reader that spoke `endpoints` in a form no real Parquet carries, every conformance suite
+stayed green, and the defect surfaced only against a real capture (a hardware validation, the
+same day). The fixture's two elements exercise the element's optionals in both directions —
+one entry with `last_msg_at_ms` and `topic` present, one silent entry with both absent.
+
+**`holder_reset` gets its reader half.** v1.10 shipped the record with its shape pinned and
+its reader obligations footnoted to producer tests; two fixtures now grade the verdicts
+themselves. `reader/audit_an_evict_across_a_holder_reset_is_unjoined` pins the identity
+boundary — the pre-reset store is not a join candidate, so an evict after the boundary is
+UNJOINED, and grading it a lost promise is a false alarm. It failed the reference reader on
+its first run: the audit joined across the boundary exactly as §2.3 forbids.
+`reader/seq_a_bracket_does_not_span_a_holder_reset` pins §5.4's bracket rule — seq numbers on
+either side of a reset come from two different sequences, and a bracket across them would
+exonerate the exact window the reset closed.
+
 ## v1.10, 2026-08-18
 
 A new cache-record kind: `holder_reset` (§2.3). The producer observed a publisher sequence

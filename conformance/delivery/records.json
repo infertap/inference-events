@@ -106,6 +106,36 @@
     "tier": "gpu"
    },
    {
+    "kind": "heartbeat",
+    "at_ms": 1785153670025.0,
+    "msgs_seen": 3,
+    "dropped": 0,
+    "oversized": 0,
+    "unknown_types": 0,
+    "events_ingested": 3,
+    "content_unresolved": 0,
+    "content_bridge_entries": 2,
+    "content_bridge_evicted": 0,
+    "publisher_restarts": 0,
+    "endpoints": [
+     {
+      "source": "i0",
+      "endpoint": "tcp://127.0.0.1:5557",
+      "msgs_seen": 3,
+      "dropped": 0,
+      "last_msg_at_ms": 1785153670020.0,
+      "publisher_restarts": 0,
+      "topic": "kv@pod-a@model-x"
+     },
+     {
+      "source": "i0",
+      "endpoint": "tcp://127.0.0.1:5558",
+      "msgs_seen": 0,
+      "dropped": 0
+     }
+    ]
+   },
+   {
     "kind": "evict",
     "at_ms": 1785153670030.0,
     "instance_id": "i0",

@@ -118,6 +118,36 @@ def segments_dropped(first_seq, last_seq, at_ms, incarnation=INCARNATION):
     return r
 
 
+def heartbeat(at_ms):
+    """The envelope, mid-stream, exactly where a real segment carries it.
+
+    Here for the ENDPOINTS COLUMN above all. `endpoints` is the record model's ONLY nested
+    column -- a list of the closed element -- and this segment's Parquet twin is therefore
+    the only place the corpus can pin its SHIPPED shape. Until this line existed it pinned
+    nothing: no delivery fixture carried a heartbeat, and the reference analyzer shipped a
+    reader that spoke endpoints in a form no real Parquet carries -- every conformance suite
+    green, every real capture's roster empty. The two elements are shaped to exercise the
+    element's optionals in both directions: one entry with `last_msg_at_ms` and `topic`
+    present, one silent entry with both absent.
+    """
+    r = base("heartbeat", at_ms)
+    r["msgs_seen"] = 3
+    r["dropped"] = 0
+    r["oversized"] = 0
+    r["unknown_types"] = 0
+    r["events_ingested"] = 3
+    r["content_unresolved"] = 0
+    r["content_bridge_entries"] = 2
+    r["content_bridge_evicted"] = 0
+    r["publisher_restarts"] = 0
+    r["endpoints"] = [
+        {"source": "i0", "endpoint": "tcp://127.0.0.1:5557", "msgs_seen": 3, "dropped": 0,
+         "last_msg_at_ms": at_ms - 5.0, "publisher_restarts": 0, "topic": "kv@pod-a@model-x"},
+        {"source": "i0", "endpoint": "tcp://127.0.0.1:5558", "msgs_seen": 0, "dropped": 0},
+    ]
+    return r
+
+
 def cache_record(kind, block_id, at_ms, **extra):
     r = base(kind, at_ms)
     r["instance_id"] = "i0"
@@ -171,6 +201,7 @@ def main():
             segment_open(0, T0),
             cache_record("store", "8f2b1c04a7d93e15", T0 + 10.0, n_tokens=16, tier="gpu"),
             cache_record("store", "b3e77a190c4f2d68", T0 + 20.0, n_tokens=16, tier="gpu"),
+            heartbeat(T0 + 25.0),
             cache_record("evict", "8f2b1c04a7d93e15", T0 + 30.0),
         ],
     }

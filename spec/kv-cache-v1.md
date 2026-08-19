@@ -1172,10 +1172,12 @@ Each note names the fixture that would fail an implementation violating the requ
 [^seq]: `telemetry/seq_rides_every_cache_record` pins the field on all three cache kinds and
     pins that records from one message share its number; `telemetry/seq_absent_where_the_transport_does_not_number`
     pins the omission. The reader half is `reader/seq_narrows_the_degraded_span_to_its_bracket`,
-    against the two fixtures that must NOT narrow —
-    `reader/seq_across_an_incarnation_boundary_does_not_narrow` and
-    `reader/a_bracket_missing_seq_does_not_narrow` — which together fail a reader that
-    narrows on an unsound bracket, the only direction in which narrowing is unsafe.
+    against the three fixtures that must NOT narrow —
+    `reader/seq_across_an_incarnation_boundary_does_not_narrow`,
+    `reader/a_bracket_missing_seq_does_not_narrow`, and
+    `reader/seq_a_bracket_does_not_span_a_holder_reset` (§5.4's publisher boundary,
+    inside one incarnation) — which together fail a reader that narrows on an unsound
+    bracket, the only direction in which narrowing is unsafe.
 
 [^reuse]: `lifecycle/records` carries the declaration on all three kinds;
     `telemetry/reuse_labelled_rides_the_store_it_describes` pins the per-record field.
@@ -1209,7 +1211,13 @@ Each note names the fixture that would fail an implementation violating the requ
 [^holder_reset]: `telemetry/holder_reset_closes_the_scope` pins the record shape and the
     emit-before-the-regressed-events ordering. The synthesis itself — sequence regression to
     record — spans two messages, which the single-message wire corpus cannot express; it is
-    pinned by the reference producer's own subscriber tests.
+    pinned by the reference producer's own subscriber tests. The reader half:
+    `reader/audit_an_evict_across_a_holder_reset_is_unjoined` pins the identity boundary
+    (the pre-reset store is not a join candidate, so grading it a lost promise is the
+    false alarm a conforming reader must not raise), and
+    `reader/seq_a_bracket_does_not_span_a_holder_reset` pins §5.4's bracket rule. The
+    first failed the reference reader on its first run — the join predated the boundary —
+    which is the argument for reader fixtures stated as a measurement.
 
 [^counters]: `lifecycle/records` pins all three lifecycle kinds byte for byte, including counters at
     zero.
@@ -1370,7 +1378,7 @@ non-empty table gates publication of any release claiming conformance.
 ### Verification
 
 Field names, types and presence rules in §2 were extracted from the conformance corpora and checked
-against them, not transcribed. Last re-verified 2026-08-13, by recursive field-union extraction
+against them, not transcribed. Last re-verified 2026-08-19, by recursive field-union extraction
 across every corpus fixture compared against the §2 tables (provenance fields and fixture-harness
 keys excluded). The inline examples in §2 are extracted from the fixtures they cite, never
 composed by hand, and are covered by the same rule. The stamp refreshes whenever §2 or a corpus

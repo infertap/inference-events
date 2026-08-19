@@ -192,6 +192,17 @@ def evict(instance, block, at, content=None, dp_rank=0):
     return r
 
 
+def holder_reset(instance, at, boundary, seq=None, dp_rank=0):
+    """The scope-level reset (spec 2.3): producer clock at detection, engine clock at the
+    boundary -- two domains on one record, never compared. group_idx deliberately absent:
+    a producer deriving the reset from a sequence regression MUST omit it."""
+    r = {"kind": "holder_reset", "at_ms": at, "instance_id": instance, "dp_rank": dp_rank,
+         "boundary_ms": boundary}
+    if seq is not None:
+        r["seq"] = seq
+    return r
+
+
 def agent_start(at, heartbeat_secs, max_segment_secs):
     """The boot record, unkeyed egress: every field spec 2.4 requires, nothing else."""
     return {"kind": "agent_start", "at_ms": at, "agent_version": "0.2.0", "egress": "raw",
@@ -353,6 +364,20 @@ FIXTURES = [
          heartbeat(T0 + 400.0, 13, dropped=1)])],
      {"gap_degraded": ["dropped_delta"], "gap_span": {"narrowed": False}}),
 
+    ("seq_a_bracket_does_not_span_a_holder_reset",
+     "the wire sequence restarts with the PUBLISHER, inside one producer incarnation "
+     "(spec 5.4): seq 41 before the reset and seq 2 after it are drawn from two different "
+     "sequences, and a bracket across them would exonerate the exact window the reset "
+     "closed. Same rule as the incarnation boundary, one level down -- the reset record "
+     "is what makes the publisher boundary visible at all",
+     [segment(RUN1, 0, [
+         heartbeat(T0, 10),
+         store("i0", "b1", T0 + 100.0, "c1", seq=41),
+         holder_reset("i0", T0 + 250.0, T0 + 200.0, seq=2),
+         store("i0", "b2", T0 + 200.0, "c2", seq=2),
+         heartbeat(T0 + 300.0, 13, dropped=1)])],
+     {"gap_degraded": ["dropped_delta"], "gap_span": {"narrowed": False}}),
+
     # --- 5.9: a store count is an insertion count only where the producer says so -------
     ("reuse_none_makes_every_store_an_insertion",
      "the producer declares its engine never announces reuse as a store, so the records "
@@ -481,6 +506,19 @@ FIXTURES = [
      [segment(RUN1, 0, [store("i0", "b1", T0, "c1")]),
       segment(RUN2, 0, [evict("i0", "b1", T0 + 100.0)])],
      {"audit": audit_verdict(i0={"indeterminate": 1})}),
+
+    ("audit_an_evict_across_a_holder_reset_is_unjoined",
+     "the reset is an identity boundary inside ONE producer run (spec 2.3): engine-space "
+     "ids are comparable only within one engine process, and the reset record is what "
+     "makes that process boundary visible -- so the pre-reset store is not a join "
+     "candidate at all, and an evict after the boundary has NO strictly-prior store: "
+     "unjoined, never a lost promise. A reader keyed only on incarnation gets this wrong "
+     "in exactly the way the cross-run fixture cannot catch",
+     [segment(RUN1, 0, [
+         store("i0", "b1", T0, "c1"),
+         holder_reset("i0", T0 + 250.0, T0 + 200.0, seq=1),
+         evict("i0", "b1", T0 + 300.0)])],
+     {"audit": audit_verdict(i0={"unjoined": 1})}),
 
     ("audit_offload_and_scope",
      "the same block on two tiers grades both evicts against the latest store (content "
