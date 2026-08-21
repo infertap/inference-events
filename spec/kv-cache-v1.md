@@ -5,7 +5,7 @@ A wire and file contract for observing key/value cache behaviour in inference en
 - [1. Scope and status](#1-scope-and-status): [Terms](#11-terms)
 - [2. Record format](#2-record-format): [encoding](#21-encoding) · [common fields](#22-common-fields) · [cache records](#23-cache-records) · [lifecycle records](#24-producer-lifecycle-records) · [delivery records](#25-delivery-records) · [clock domains](#26-clock-domains)
 - [3. Identity](#3-identity): [two spaces](#31-two-identity-spaces) · [scope](#32-scope) · [key epochs](#33-key-epochs) · [the canary](#34-the-canary-and-fleet-key-consistency)
-- [4. Delivery layout](#4-delivery-layout): [sealed segments](#41-sealed-segments) · [incarnations](#42-incarnations) · [orphans](#43-orphans)
+- [4. Delivery layout](#4-delivery-layout): [sealed segments](#41-sealed-segments) · [incarnations](#42-incarnations) · [orphans](#43-orphans) · [destination keys](#44-destination-keys)
 - [5. Continuity and coverage](#5-continuity-and-coverage): the reader's conformance floor, §5.1–§5.9
 - [6. Versioning](#6-versioning): [`contract_version`](#61-contract_version) · [the mixed-fleet law](#62-the-mixed-fleet-law)
 - [7. Out of scope](#7-out-of-scope)
@@ -823,6 +823,30 @@ excluded from continuity accounting**. They are complete and measurable, but bel
 so a reader MUST NOT count their presence or absence toward any continuity claim, and MUST treat the
 span they cover as indeterminate. [^orphan]
 
+### 4.4 Destination keys
+
+Delivery by files is transport-agnostic: a shared mount or a hand copy satisfies it. When segments
+rendezvous through a **listable object store**, shipped keys MUST follow the layout the delivery
+corpus states (`delivery/layout.json`, `dest_key_layout`):
+
+    <prefix>/<utc yyyy-mm-dd>/<utc hh>/<node>/<sealed segment file>
+
+The date and hour are the **shipper's UTC clock at ship time**. They are a transport affordance,
+never identity: they let a consumer bound each discovery listing by a watermark hour instead of
+enumerating the bucket's history, and they assert nothing about the records inside — identity
+stays in the segment's own header (§4.1). Ship-time dating is itself load-bearing: a segment
+shipped late lands under the current hour, in front of any consumer's watermark, so a shipper
+that was down recovers by construction rather than by a lookback being wide enough.
+
+The node segment carries per-node credential isolation and sits inside the date so the dated
+bound survives: a per-node write policy pins a node to its own keys with a wildcarded path
+(`<prefix>/*/*/<node>/*`).
+
+This section exists because its absence was measured. With the destination unstated, a conforming
+producer shipped node-first keys while a conforming consumer discovered date-first, and both
+suites stayed green while a real install ingested nothing (2026-08-21). A convention two sides
+must share is contract, and it enters here with its assertions on both sides. [^destkeys]
+
 ## 5. Continuity and coverage
 
 This section states the reader's obligations. It is the conformance floor.
@@ -1106,6 +1130,7 @@ conformant when the cited sections hold; these tables exist so an implementer ca
 | `segment_seq` from zero without gaps within an incarnation | §4.2 | `delivery/layout` |
 | Recovered segments marked; attributed keeps its identity, unattributed claims none | §4.3 | `delivery/records` (`orphan_segment`) |
 | `contract_version` in every `segment_open`; never on an unattributed recovery | §6.1 | `delivery/records` |
+| Object-store keys follow the dated destination layout | §4.4 | `delivery/layout.json` (`dest_key_layout`), asserted in both consumers' suites |
 
 ### 8.2 Reader
 
@@ -1252,6 +1277,10 @@ Each note names the fixture that would fail an implementation violating the requ
     forms.
 
 [^continuity]: `delivery/layout`.
+
+[^destkeys]: `delivery/layout.json` states the layout once (`dest_key_layout` and its two rules);
+    the reference producer's suite parses the shipped shipper unit's destination template against
+    it, and the reference reader's suite asserts its discovery arithmetic against the same bytes.
 
 [^restart]: `delivery/layout`.
 

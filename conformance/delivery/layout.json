@@ -15,6 +15,7 @@
  "incarnation_pattern": "<run_start_unix_ms>-<pid>",
 
  "ship_rule": "Ship and ingest only sealed Parquet segments. The write-ahead JSONL never leaves the node: not the active segment, not a sealed WAL awaiting conversion, and never a conversion temporary.",
+ "dest_key_layout": "<prefix>/<utc yyyy-mm-dd>/<utc hh>/<node>/<sealed segment file>",
  "shipper_exclude": ["active.jsonl", "*.jsonl", "*.parquet.tmp"],
 
  "rules": [
@@ -28,11 +29,13 @@
   "A declared drop (segments_dropped) is emitted once PER INCARNATION whose segments were reclaimed, and its `incarnation` names the run whose data is gone rather than the process that did the dropping — one enforcement pass can reclaim an earlier run's segments, and the dropping process is readable from the enclosing segment's own header. Grouping is what keeps `first_seq`/`last_seq` a description: within one incarnation the dropped set is contiguous, across incarnations it never is.",
   "A reader learns a segment's encoding from its content, never from its suffix: a Parquet segment begins with the four bytes PAR1, a JSONL segment with a JSON object (spec 2.1). The suffixes here exist for the shipper and for humans, like the rest of the filename.",
   "The producer replaces a sealed segment's write-ahead JSONL with its Parquet twin: write the .parquet.tmp, fsync, verify its footer against the records written, rename to .parquet, fsync the directory, and only then delete the JSONL. The delete is last because deleting first would reintroduce, in a crash window, exactly the loss the write-ahead form exists to prevent. Recovery reconciles idempotently: sealed JSONL with no Parquet converts; both present deletes the JSONL, which is safe because a committed .parquet was verified before its rename; a stray .tmp is unlinked.",
-  "The conversion temporary is never terminal and never ships. It is the one file class in the directory besides the active segment whose content can change, and the shipper's exclusion of it is deterministic by name pattern, not timing."
+  "The conversion temporary is never terminal and never ships. It is the one file class in the directory besides the active segment whose content can change, and the shipper's exclusion of it is deterministic by name pattern, not timing.",
+  "Destination keys are dated-first, hour-deep, then node: <prefix>/<utc yyyy-mm-dd>/<utc hh>/<node>/<file>. The date and hour are the SHIPPER's UTC clock at ship time. They are a transport affordance, never identity: they let a consumer bound each discovery listing by a watermark hour instead of enumerating the bucket's history, and they assert nothing about the records inside. Ship-time dating is load-bearing, not convenience: a segment shipped late lands under the CURRENT hour, in front of any watermark, so a shipper that was down for a day recovers by construction; seal-time dating would file the same segment behind the watermark, past any bounded lookback.",
+  "The node segment exists for per-node credential isolation and sits INSIDE the date so the dated bound survives. A per-node write policy still pins a node to its own keys via wildcarded paths: PutObject on <prefix>/*/*/<node>/*, and ListBucket under the same shape as a StringLike prefix condition. Node-first would invert discovery into one listing per node per cycle, which fails at exactly the fleet size the layout exists to serve."
  ],
 
  "asserted_by": [
-  "infertap: tests/delivery_layout.rs -- the tap's constants, and the shipped systemd shipper unit's --exclude argument, parsed from the unit rather than matched by pattern.",
-  "analyzer: crates/ingest -- ACTIVE_SEGMENT, against the vendored copy of this file, once the contract pin carries it."
+  "infertap: tests/delivery_layout.rs -- the tap's constants, the shipped systemd shipper unit's --exclude argument AND its destination template, parsed from the unit rather than matched by pattern.",
+  "analyzer: crates/ingest -- the candidate rule's suffix and the dated discovery arithmetic, against the vendored copy of this file."
  ]
 }
