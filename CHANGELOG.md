@@ -1,5 +1,34 @@
 # Changelog
 
+## Corpus, 2026-08-22 — no contract movement
+
+The record model is unchanged and `contract_version` stays 1.10; this entry moves fixtures.
+
+**The delivery segment gains a `clear` and a `holder_reset`, because a corpus that omits a kind
+cannot fail a reader that mishandles it.** The sealed segment held five records — a header, two
+stores, a heartbeat and an evict — so five of the schema's eleven kinds appeared nowhere in the
+shipped Parquet form. Two consumers of that fixture were written against it and both were wrong
+in ways it could not see.
+
+A reader deriving cache facts filtered FOUR kinds where the model has three (`holder_reset` is
+not a cache fact and never lands in a delta), and the corpus held no `holder_reset`, so the
+filter's extra arm was unreachable and every suite stayed green. The fixture now carries one,
+and the counts diverge: six cache records under the correct rule, seven under the wrong one.
+
+**An evict now carries a resolved `content_id`, beside one that carries none.** §3.1 makes the
+portable identity optional on both stores and evicts — absent where the producer could not derive
+one — and the identity fallback therefore has two arms. The corpus exercised neither: no record
+in it carried a `content_id` at all. A second consumer treated an empty-string identity as absent
+where the reference treats it as present, which is the same class of defect and equally invisible
+here. The pair pins the fallback; the empty-string case is named in the delivery note as a
+distinction the fixture deliberately does not assert, since the producer emits absence rather
+than emptiness.
+
+**The header declares a `workload_class`, and a second instance carries `dp_rank` and
+`group_idx`.** Both are optional, both were absent throughout, and both are stamped or cast by
+readers that had nothing to stamp or cast. `clear` also arrives carrying no `block_id` at all,
+which is the one cache fact whose identity is absent rather than defaulted.
+
 ## Corpus, 2026-08-19 — no contract movement
 
 The record model is unchanged and `contract_version` stays 1.10; this entry moves fixtures.
