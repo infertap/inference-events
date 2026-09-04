@@ -16,6 +16,8 @@
 
  "ship_rule": "Ship and ingest only sealed Parquet segments. The write-ahead JSONL never leaves the node: not the active segment, not a sealed WAL awaiting conversion, and never a conversion temporary.",
  "dest_key_layout": "<prefix>/<utc yyyy-mm-dd>/<utc hh>/<node>/<sealed segment file>",
+ "reserved_consumer_prefix": "_analyzer/",
+ "reserved_consumer_note": "Under <prefix>/, the first segment `_analyzer/` is reserved for the consumer's own objects (its derived tiers, annotations, probes). A shipper never writes beneath it, and an ingester never reads a segment from beneath it. The segment begins with an underscore because no DNS hostname and no date can, so nothing this contract ships can spell it.",
  "shipper_exclude": ["active.jsonl", "*.jsonl", "*.parquet.tmp"],
 
  "rules": [
