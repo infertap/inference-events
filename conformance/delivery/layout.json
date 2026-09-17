@@ -18,6 +18,8 @@
  "dest_key_layout": "<prefix>/<utc yyyy-mm-dd>/<utc hh>/<node>/<sealed segment file>",
  "reserved_consumer_prefix": "_analyzer/",
  "reserved_consumer_note": "Under <prefix>/, the first segment `_analyzer/` is reserved for the consumer's own objects (its derived tiers, annotations, probes). A shipper never writes beneath it, and an ingester never reads a segment from beneath it. The segment begins with an underscore because no DNS hostname and no date can, so nothing this contract ships can spell it.",
+ "stream": "kv",
+ "stream_note": "One prefix per stream, and the prefix ends in the stream's name: the KV-cache stream ships to <root>/kv/, so the <prefix> every layout rule and dest_key_layout name is <root>/kv/ — the shipper's configured destination and the consumer's configured prefix both end in kv/. A stream's own health records stay in-band under its prefix; a second stream would take a second prefix beside it, never a second layout. The component was born inside the configured prefix on both sides (the tap's INFERTAP_DEST, the analyzer's --bucket-prefix), so entering the contract here renames nothing shipped before it and asks no consumer to walk one level up: the consumer's root is still <root>/kv/.",
  "shipper_exclude": ["active.jsonl", "*.jsonl", "*.parquet.tmp"],
 
  "rules": [
@@ -38,6 +40,8 @@
 
  "asserted_by": [
   "infertap: tests/delivery_layout.rs -- the tap's constants, the shipped systemd shipper unit's --exclude argument AND its destination template, parsed from the unit rather than matched by pattern.",
-  "analyzer: crates/ingest -- the candidate rule's suffix and the dated discovery arithmetic, against the vendored copy of this file."
+  "analyzer: crates/ingest -- the candidate rule's suffix and the dated discovery arithmetic, against the vendored copy of this file.",
+  "infertap: tests/delivery_layout.rs -- the shipper's example destination (ship.env.example) ends in the stream component with its own trailing slash.",
+  "analyzer: crates/ingest/tests/contract_layout.rs -- the stream component this file names is the last segment of every documented --bucket-prefix (docs/quickstart.md, the installer's usage, the chart's values), against the vendored copy of this file."
  ]
 }
