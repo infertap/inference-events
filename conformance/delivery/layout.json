@@ -5,13 +5,11 @@
 
  "active_segment": "active.jsonl",
  "sealed_prefix": "seg-",
- "orphan_prefix": "orphan-",
  "wal_suffix": ".jsonl",
  "shipped_suffixes": [".jsonl", ".parquet"],
  "conversion_tmp_suffix": ".parquet.tmp",
 
  "sealed_pattern": "seg-<incarnation>-<segment_seq>.jsonl | seg-<incarnation>-<segment_seq>.parquet",
- "orphan_pattern": "orphan-<recovery_unix_ms>.jsonl | orphan-<recovery_unix_ms>.parquet",
  "incarnation_pattern": "<run_start_unix_ms>-<pid>",
 
  "ship_rule": "Ship and ingest only sealed Parquet segments. The write-ahead JSONL never leaves the node: not the active segment, not a sealed WAL awaiting conversion, and never a conversion temporary.",
@@ -24,7 +22,7 @@
 
  "rules": [
   "Two file classes are in flight: the active segment, and a conversion temporary. Everything else in the directory is terminal: the process that wrote it will not write to it again.",
-  "Sealed segments ship in their shipped form, including ones that could not be attributed to an incarnation. A file whose records are complete but whose identity was lost to a crash is sealed under the orphan prefix rather than deleted; its records are attributable to an instance and to no sequence. The write-ahead JSONL awaiting conversion is terminal to its writer but not shippable; its Parquet twin ships in its place.",
+  "Every shipped segment is attributed: it begins with its own segment_open. A file whose header cannot be read is not a segment (spec 4.3, since 1.11): the producer that finds it unlinks it and declares the discard with a segment_recovered record in the first segment of its own incarnation. The write-ahead JSONL awaiting conversion is terminal to its writer but not shippable; its Parquet twin ships in its place.",
   "The active segment must never be shipped or ingested. It is not merely incomplete — its CONTENT WILL CHANGE, and batch identity downstream is the content hash, so reading it now and reading the sealed version later stores every overlapping record twice.",
   "Segment continuity is scoped to (instance, incarnation). A fresh incarnation starting at segment_seq 0 is a restart, not a gap.",
   "Identity lives in the file's first record (segment_open), not in its name. Filenames carry the same fields for the shipper and for humans, but binding correctness to them would bind it to a property of the transport rather than of the data.",

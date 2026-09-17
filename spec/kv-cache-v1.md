@@ -580,14 +580,18 @@ The first record of every segment, written before any other record in that segme
 
 #### `segment_recovered`
 
-Written when a producer recovers a segment left unfinished by a predecessor.
+Written when a producer finds a segment left unfinished by a predecessor.
 
 | field | type | presence | meaning |
 |---|---|---|---|
 | `kind` | `"segment_recovered"` | required | |
 | `at_ms` | number | required | producer clock |
-| `attributed` | boolean | required | whether the recovered segment's own identity was readable |
-| `dropped_bytes` | integer | required | trailing bytes discarded as incomplete |
+| `attributed` | boolean | required | whether the unfinished segment's own identity was readable |
+| `dropped_bytes` | integer | required | bytes discarded: the trailing incomplete record of an attributed recovery, or the whole unattributable file |
+
+An attributed recovery carries this record as a trailer inside the recovered segment. An
+unattributed one is declared by the **recovering** incarnation, in its own first segment, after
+that segment's `segment_open`; the unattributable file itself never ships (§4.3).
 
 *Example (informative), from `delivery/records`:*
 
@@ -792,8 +796,11 @@ filename. The `segment_open` header record is **normative**: it carries the segm
 the segment, so continuity survives any transport that preserves file contents, including transports
 that rename. [^header]
 
-A sealed segment MUST begin with either a `segment_open` record or a `segment_recovered` record.
-A reader MUST reject a segment beginning with neither, and MAY dispatch on that first record. [^first]
+A sealed segment MUST begin with a `segment_open` record. A reader MUST reject a segment that
+begins with anything else, with one tolerance: a reader MAY accept a segment beginning with a
+`segment_recovered` record whose `attributed` is `false`, the unattributed orphan form that
+producers conforming to versions before 1.11 shipped, and MUST then treat it as §4.3 of those
+versions specified (attributable to an instance, excluded from continuity). [^first]
 
 ### 4.2 Incarnations
 
@@ -806,22 +813,27 @@ within an incarnation is loss. A fresh incarnation beginning at `segment_seq` ze
 
 ### 4.3 Orphans
 
-A producer that recovers a segment left unfinished by a predecessor MUST mark it with a
-`segment_recovered` record. The two cases differ:
+A producer that finds a segment left unfinished by a predecessor MUST do one of two things,
+decided by whether the file's own `segment_open` record is readable.
 
-**Attributed** (`attributed: true`). The segment's own `segment_open` survived, so the segment
-retains its original identity. It begins with that `segment_open`, keeps its original `incarnation`
-and `segment_seq`, and **participates in continuity normally**. A reader MUST treat it as an
-ordinary sealed segment of the incarnation that wrote it, not of the producer that recovered it.
+**Attributed** (`attributed: true`). The header survived, so the segment retains its original
+identity. The producer discards any trailing incomplete record, appends a `segment_recovered`
+record naming the bytes discarded, seals the segment under its original `incarnation` and
+`segment_seq`, and ships it. A reader MUST treat it as an ordinary sealed segment of the
+incarnation that wrote it, not of the producer that recovered it. It **participates in continuity
+normally**.
 
-**Unattributed** (`attributed: false`). The segment's header did not survive, so the segment claims
-no identity. It MUST begin with the `segment_recovered` record, which takes the header position for
-this segment class.
+**Unattributed** (`attributed: false`). The header did not survive. A conforming producer writes
+and durably stores the header before any other record, so such a file was not durably written,
+and its surviving records are of unknown integrity and belong to no sequence. The producer MUST
+NOT ship it. It MUST unlink the file and MUST declare the discard with a `segment_recovered`
+record in the first sealed segment of its own incarnation, after that segment's `segment_open`,
+with `dropped_bytes` equal to the whole file's size.
 
-A reader MUST treat the records of an unattributed segment as **attributable to an instance and
-excluded from continuity accounting**. They are complete and measurable, but belong to no sequence,
-so a reader MUST NOT count their presence or absence toward any continuity claim, and MUST treat the
-span they cover as indeterminate. [^orphan]
+A reader MUST treat an unattributed recovery as a declaration and nothing more. The span the
+discarded file covered was already uncovered under §5.3, since it precedes the recovering
+incarnation's start, and the declaration neither narrows nor widens that window. A reader MUST
+NOT count the declaration toward any continuity claim. [^orphan]
 
 ### 4.4 Destination keys
 
@@ -1040,11 +1052,6 @@ never claimed it. [^reuseread]
 Each segment carries `contract_version` once, in its `segment_open` record. It identifies the version
 of **this contract** that the segment conforms to.
 
-**An unattributed recovered segment (§4.3) declares no `contract_version`, and MUST NOT.** Its
-records were written by a predecessor whose version the recovering producer does not know, so any
-value it supplied would be a guess presented as a fact. A reader MUST parse such a segment under the
-mixed-fleet law (§6.2), which a conforming reader implements regardless. [^unversioned]
-
 `contract_version` is distinct from `semantics_version`, which governs classification (§1) and does
 not appear in this contract. A reader MUST NOT conflate them: the same facts may be reclassified
 under a new `semantics_version` without any change to `contract_version`.
@@ -1128,8 +1135,8 @@ conformant when the cited sections hold; these tables exist so an implementer ca
 | The canary of the key in force, and no other key's | §3.4 | `lifecycle/records` |
 | Segments sealed immutable and complete, header record first | §4.1 | `delivery/records` |
 | `segment_seq` from zero without gaps within an incarnation | §4.2 | `delivery/layout` |
-| Recovered segments marked; attributed keeps its identity, unattributed claims none | §4.3 | `delivery/records` (`orphan_segment`) |
-| `contract_version` in every `segment_open`; never on an unattributed recovery | §6.1 | `delivery/records` |
+| Recovered segments marked; attributed keeps its identity, unattributed is discarded and declared | §4.3 | `delivery/records` (`segment_recovered` both forms; `recovering_segment`) |
+| `contract_version` in every `segment_open` | §6.1 | `delivery/records` |
 | Object-store keys follow the dated destination layout | §4.4 | `delivery/layout.json` (`dest_key_layout`), asserted in both consumers' suites |
 
 ### 8.2 Reader
@@ -1148,7 +1155,7 @@ conformant when the cited sections hold; these tables exist so an implementer ca
 | Never compare identities across key epochs | §3.3 | `pseudonym/vectors` |
 | Canaries compared before any cross-producer figure; rotation from convergence, never testimony | §3.4 | `reader/canary_split_key_material_is_not_a_measured_zero` |
 | Only sealed segments, ingested whole-file or not at all | §4.1, §5.5 | `delivery/layout`; `vllm-wire` malformed rows |
-| Unattributed recoveries measurable but outside continuity | §4.3 | `reader/audit_unattributed_recovery_supports_no_same_run_claim` |
+| An unattributed recovery is a declaration, not coverage | §4.3 | `reader/uncovered_a_discarded_recovery_declares_no_coverage` |
 | Continuity scoped to (instance, incarnation); a producer-level loss degrades every covered instance | §5.1 | `reader/gap_scope_*` |
 | A restart is not a gap | §5.2 | `reader/gap_an_intact_stream_is_not_degraded` |
 | Incarnation boundaries are uncovered windows, from the lifecycle bracket | §5.3 | `reader/uncovered_*` |
@@ -1273,8 +1280,9 @@ Each note names the fixture that would fail an implementation violating the requ
 
 [^header]: `delivery/records` pins one sealed segment whole, header first.
 
-[^orphan]: `delivery/records` pins `segment_recovered` in both the attributed and unattributed
-    forms.
+[^orphan]: `delivery/records` pins `segment_recovered` in both forms: the attributed trailer,
+    and the unattributed declaration inside the recovering incarnation's first segment
+    (`recovering_segment`).
 
 [^continuity]: `delivery/layout`.
 
@@ -1327,13 +1335,12 @@ Each note names the fixture that would fail an implementation violating the requ
     coverage attached to figures over a question span — exactly 1.0 over a counted bracket,
     strictly below it under inbound loss or under a tail no stop record closed.
 
-[^contractver]: `delivery/records` pins `contract_version` in the sealed segment's header, and
-    pins the unattributed orphan carrying none (`orphan_segment`), per §6.1. The reference
-    producer emits it on every `segment_open`.
+[^contractver]: `delivery/records` pins `contract_version` in the sealed segment's header. The
+    reference producer emits it on every `segment_open`.
 
 [^first]: `delivery/records` pins a sealed segment beginning with `segment_open`, pins
-    `segment_recovered` in both forms, and pins a whole unattributed orphan beginning with the
-    marker (`orphan_segment`).
+    `segment_recovered` in both forms, and pins the recovering segment whose second record is
+    the unattributed declaration (`recovering_segment`).
 
 [^multi]: `reader/gap_scope_*`: one incarnation covering two instances, a hole in its sequence,
     surviving records mentioning only one — both degrade, including the instance with no
@@ -1350,12 +1357,6 @@ Each note names the fixture that would fail an implementation violating the requ
     by pinned construction, covered by named tests in the producer's own suite: one holds
     the segment-age bound even on an event-quiet stream; the other sets the heartbeat deadline
     early by the poll loop's wake jitter, so the emitted gap never exceeds the declared bound.
-
-[^unversioned]: `delivery/records` pins the unattributed orphan whole (`orphan_segment`): its
-    marker takes the header position and carries no `contract_version`, byte-for-byte.
-    `reader/audit_unattributed_recovery_supports_no_same_run_claim` ingests such an orphan
-    through the shipped delivery path and reaches its verdict — a reader parsing the
-    versionless segment under the mixed-fleet law, demonstrated rather than asserted.
 
 [^idtype]: `telemetry/` fixtures ARE the unkeyed path — raw identities, pre-pseudonymization —
     and carry every identity as a decimal string; a producer emitting numbers fails all of them.

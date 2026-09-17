@@ -1,5 +1,44 @@
 # Changelog
 
+## 1.11, 2026-09-17 — a file with no identity is not a segment
+
+**A producer never ships a headerless file.** §4.3 defined two recovered-segment cases and let
+the unattributed one ship as `orphan-<ms>`, marker first, records attributable to an instance
+and to no sequence. Two facts made that worse than the text assumed. A conforming producer
+durably stores the `segment_open` header before any other record, so a file with complete
+records and no readable header cannot come from a process crash; it comes from power loss with
+reordering or from corruption, and the same event can have punched holes further down the
+file. And a reader already brackets a crash as uncovered from the last observation (§5.3), so
+shipping the orphan moved that observation later by at most one segment window, with records
+the reader had to grade as coverage-indeterminate anyway. The cost was a third file class that
+every shipper, retention ring and disk cap special-cased and that no `segments_dropped` record
+could declare reclaimed, because the file has no incarnation and no sequence range.
+
+Now a producer that finds a headerless file MUST NOT ship it: it unlinks the file and declares
+the discard with a `segment_recovered` record (`attributed: false`, `dropped_bytes` the whole
+file's size) in the first sealed segment of its own incarnation, after that segment's
+`segment_open`. A reader treats the declaration as a declaration and nothing more; the span was
+already uncovered and the declaration neither narrows nor widens it. Every shipped segment
+begins with `segment_open` (§4.1), with one tolerance kept for readers: the marker-first orphan
+form that producers before 1.11 shipped MAY still be accepted and read as those versions
+specified. §6.1's paragraph on versionless unattributed segments is gone with the segments.
+
+Fixtures: `delivery/records` drops `orphan_segment` and gains `recovering_segment`, an
+incarnation's first segment carrying the declaration second; its unattributed
+`segment_recovered` case now carries the whole file's size. `reader/` drops
+`audit_unattributed_recovery_supports_no_same_run_claim`, whose scenario cannot occur, and
+gains `uncovered_a_discarded_recovery_declares_no_coverage`, byte-for-byte the crash window
+with the declaration present. `layout.json` loses the orphan prefix and pattern, and its
+shipping rule says every shipped segment is attributed. `contract_version` is 1.11: the
+producer obligation tightens and no reader obligation moves for anything a 1.11 producer
+emits, which is the minor-bump case under governance rule 3.
+
+**The delivery generator catches up with its corpus.** The 2026-08-22 entry below moved the
+sealed-segment fixture by hand: a clear, a holder_reset, an identity on both arms of the
+evict, a second instance, a `workload_class` on the header. `tools/gen-delivery-corpus.py`
+never learned them, so regenerating the corpus silently reverted them. It reproduces the
+committed segment now, and this entry's fixtures were regenerated through it, per rule 4.
+
 ## Corpus, 2026-08-22 — no contract movement
 
 The record model is unchanged and `contract_version` stays 1.10; this entry moves fixtures.

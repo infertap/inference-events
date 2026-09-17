@@ -61,7 +61,7 @@ def segment_open(seq, at_ms):
     # the header states everything the segment declares once: the contract it conforms to, its
     # identity, and the producer's provenance, which a reader applies to every record in it
     r.update(PROVENANCE)
-    r["contract_version"] = "1.10"
+    r["contract_version"] = "1.11"
     # 5.8: the liveness bounds are declared on every header. They are the entire basis on which a
     # reader may call this producer stale, and an analysis window need not contain a start record.
     r["heartbeat_secs"] = 60
@@ -69,18 +69,23 @@ def segment_open(seq, at_ms):
     # 3.3, since 1.5: the epoch scoping this segment's identity space, declared where every other
     # run-constant fact is
     r["key_epoch"] = 3
+    # 2.7: what the producer's traffic is for, in the operator's vocabulary, declared once
+    # here; a reader applies it to every record in the segment.
+    r["workload_class"] = "agentic"
     r["incarnation"] = INCARNATION
     r["segment_seq"] = seq
     return r
 
 
 def segment_recovered(attributed, dropped_bytes, at_ms):
-    """The trailer a recovery appends, stating what happened in-band rather than leaving it to
-    be inferred from a filename.
+    """What a recovery states in-band rather than leaving it to be inferred from a filename.
 
-    `attributed` false means the crash took the header before it reached disk, so the file seals
-    as `orphan-<ms>.jsonl` and its records belong to an instance and to no sequence. A consumer
-    ingests them for measurement and must treat the span as coverage-indeterminate.
+    `attributed` true is a trailer inside the recovered segment: the header survived, the torn
+    tail was discarded, and the segment ships under its own identity. `attributed` false means
+    the header did not survive: the file was never durably written (a conforming producer
+    fsyncs the header before any record), so the producer unlinks it and declares the discard
+    -- the whole file's size -- in the first segment of its OWN incarnation (spec 4.3, since
+    1.11). Nothing headerless ships.
     """
     r = base("segment_recovered", at_ms)
     r["attributed"] = attributed
@@ -167,9 +172,10 @@ def main():
             "expect": segment_recovered(True, 137, T0 + 1000.0),
         },
         {
-            "note": "an unattributable orphan: the crash took the header, so it belongs to no "
-            "sequence and its span is coverage-indeterminate",
-            "expect": segment_recovered(False, 0, T0 + 2000.0),
+            "note": "an unattributable file: the header did not survive, so the whole file "
+            "(4096 bytes here) is discarded and declared by the recovering incarnation in its "
+            "own first segment; the span it covered was already uncovered",
+            "expect": segment_recovered(False, 4096, T0 + 2000.0),
         },
         {
             "note": "declared loss -- segments 4 through 6 dropped under the disk cap. The "
@@ -188,12 +194,21 @@ def main():
     # record stream. Consumers need this shape and not just the record shapes, because the
     # property that matters at ingest is FILE-scoped -- every row in this file was written by
     # the incarnation its first record names, and that is what makes the identity joinable.
+    # The records after the first five exist to make reader defects REACHABLE (2026-08-22):
+    # a clear carries no block id, a holder_reset is not a cache fact, an evict carries a
+    # resolved content_id beside one that carries none, and a second instance carries
+    # dp_rank and group_idx. A corpus that omits a kind cannot fail a reader that
+    # mishandles it.
+    i1 = {"instance_id": "i1", "dp_rank": 1, "group_idx": 2}
     segment = {
         "note": "one sealed segment as shipped. The header is first and every later record "
         "belongs to its incarnation; that containment is the contract, not a convention of "
         "this fixture. parquet_twin names the same records in the shipped Parquet form "
-        "(spec 2.1), generated from this object by tools/gen-parquet-twin.py; decoding "
-        "both to the same record sequence is what a reader proves.",
+        "(spec 2.1), generated from this object by tools/gen-parquet-twin.py. The records "
+        "after the first five exist to make reader defects REACHABLE: a clear (a cache fact "
+        "with no block id), a holder_reset (not a cache fact at all), an evict with a "
+        "resolved content_id beside one without, and a second instance carrying dp_rank and "
+        "group_idx. A corpus that omits a kind cannot fail a reader that mishandles it.",
         "filename": f"seg-{INCARNATION}-0.jsonl",
         "parquet_twin": f"seg-{INCARNATION}-0.parquet",
         "incarnation": INCARNATION,
@@ -203,22 +218,31 @@ def main():
             cache_record("store", "b3e77a190c4f2d68", T0 + 20.0, n_tokens=16, tier="gpu"),
             heartbeat(T0 + 25.0),
             cache_record("evict", "8f2b1c04a7d93e15", T0 + 30.0),
+            {**cache_record("store", "c41d9f8a2b6e0357", T0 + 40.0, n_tokens=16, tier="gpu"),
+             **i1, "content_id": "11111111111111111111",
+             "parent_id": "8f2b1c04a7d93e15", "spec_kind": "full_attention"},
+            {**cache_record("evict", "c41d9f8a2b6e0357", T0 + 50.0, tier="gpu"),
+             **i1, "content_id": "11111111111111111111"},
+            {**base("clear", T0 + 60.0), **i1, "scope": "all", "tier": "gpu"},
+            {**base("holder_reset", T0 + 70.0), **i1, "boundary_ms": T0 + 65.0},
         ],
     }
 
-    # An unattributed orphan exactly as a consumer receives it: the recovery marker TAKES
-    # THE HEADER POSITION, because the segment claims no identity and a reader dispatching
-    # on the first record must learn what the file is without a second pass. Its records
-    # remain attributable to an instance and to no sequence.
-    orphan = {
-        "note": "an unattributed orphan as shipped: segment_recovered first, then the "
-        "records that survived. No segment_open, no incarnation, no continuity claim -- "
-        "the span it covers is coverage-indeterminate by construction.",
-        "filename": "orphan-1785153680000.jsonl",
+    # The recovering incarnation's first segment exactly as a consumer receives it: its own
+    # header first, then the declaration of the headerless file it discarded, then its
+    # ordinary records. Nothing of the discarded file ships; the declaration is all a reader
+    # gets, and all it can act on.
+    recovering = {
+        "note": "the first segment of an incarnation that found and discarded a headerless "
+        "file: segment_open first, the unattributed segment_recovered second, then the "
+        "run's own records. The discarded span was already uncovered; the declaration "
+        "changes no coverage figure.",
+        "filename": "seg-1785153900000-200-0.jsonl",
+        "incarnation": "1785153900000-200",
         "lines": [
-            segment_recovered(False, 42, T0 + 2000.0),
-            cache_record("store", "8f2b1c04a7d93e15", T0 + 10.0, n_tokens=16, tier="gpu"),
-            cache_record("evict", "8f2b1c04a7d93e15", T0 + 30.0),
+            {**segment_open(0, T0 + 230_000.0), "incarnation": "1785153900000-200"},
+            segment_recovered(False, 4096, T0 + 230_001.0),
+            cache_record("store", "8f2b1c04a7d93e15", T0 + 230_010.0, n_tokens=16, tier="gpu"),
         ],
     }
 
@@ -236,7 +260,7 @@ def main():
         "incarnation_pattern": "<run_start_unix_ms>-<pid>",
         "cases": cases,
         "segment": segment,
-        "orphan_segment": orphan,
+        "recovering_segment": recovering,
     }
     (OUT / "records.json").write_text(json.dumps(corpus, indent=1) + "\n")
     print(f"wrote {OUT / 'records.json'}")

@@ -43,7 +43,7 @@ def segments_of(rel, doc):
         return [(seg[0] if seg else None, seg) for seg in doc["segments"]]
     if family in ("lifecycle", "delivery"):
         out = [(None, [c["expect"] for c in doc.get("cases", []) if isinstance(c.get("expect"), dict)])]
-        for key in ("segment", "orphan_segment"):
+        for key in ("segment", "recovering_segment"):
             lines = list(doc.get(key, {}).get("lines", []))
             if lines:
                 out.append((lines[0], lines))

@@ -115,7 +115,7 @@ RUN3 = "1785154200000-300"
 
 
 def segment(incarnation, seq, records, provenance=None, workload_class=None,
-            per_record_provenance=None, version="1.10"):
+            per_record_provenance=None, version="1.11"):
     """One sealed segment: the header the delivery contract demands, then the records.
 
     `provenance` and `workload_class` go on the HEADER and are declared once for the whole
@@ -553,16 +553,6 @@ FIXTURES = [
          store("i0", "b2", T0 + 200.0), evict("i0", "b2", T0 + 300.0)])],
      {"audit": audit_verdict(i0={"underresolved": 1, "agreed": 1})}),
 
-    ("audit_unattributed_recovery_supports_no_same_run_claim",
-     "an unattributed recovered segment (spec 4.3): the marker takes the header position, "
-     "the records belong to an instance and to no sequence, and a store inside one cannot "
-     "support a same-run claim -- the later evict without an identity grades "
-     "indeterminate, never as a lost promise",
-     [[{"kind": "segment_recovered", "at_ms": T0 - 500.0, "attributed": False,
-        "dropped_bytes": 42},
-       store("i0", "b1", T0, "c1")],
-      segment(RUN2, 0, [evict("i0", "b1", T0 + 100.0)])],
-     {"audit": audit_verdict(i0={"indeterminate": 1})}),
 
     ("zero_single_holder_is_not_a_finding",
      "one holder stored everything: cross-cache duplication is not a thing that could "
@@ -887,6 +877,22 @@ FIXTURES = [
          heartbeat(T0 + 60_000.0, 10),
          heartbeat(T0 + 120_000.0, 20)]),
       segment(RUN2, 0, [
+          agent_start(T0 + 400_000.0, heartbeat_secs=300, max_segment_secs=600),
+          heartbeat(T0 + 460_000.0, 10)])],
+     {"uncovered": {"i0": [[T0 + 120_000.0, T0 + 400_000.0]]}}),
+
+    ("uncovered_a_discarded_recovery_declares_no_coverage",
+     "run-2 found a headerless file at start and discarded it, declaring the discard as the "
+     "second record of its first segment (spec 4.3, since 1.11). The span that file covered "
+     "was already uncovered -- it precedes run-2's start -- so the window is byte-for-byte "
+     "the crash fixture's: a reader that widens or narrows it on the declaration fails here",
+     [segment(RUN1, 0, [
+         agent_start(T0, heartbeat_secs=300, max_segment_secs=600),
+         heartbeat(T0 + 60_000.0, 10),
+         heartbeat(T0 + 120_000.0, 20)]),
+      segment(RUN2, 0, [
+          {"kind": "segment_recovered", "at_ms": T0 + 399_000.0, "attributed": False,
+           "dropped_bytes": 4096},
           agent_start(T0 + 400_000.0, heartbeat_secs=300, max_segment_secs=600),
           heartbeat(T0 + 460_000.0, 10)])],
      {"uncovered": {"i0": [[T0 + 120_000.0, T0 + 400_000.0]]}}),
