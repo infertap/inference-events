@@ -6,10 +6,27 @@ import json
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-KEY = b"infertap-conformance-test-key!!!"
+KEY_MATERIAL = bytes.fromhex(
+    json.loads((ROOT / "conformance/pseudonym/vectors.json").read_text())[
+        "test_key_hex"
+    ]
+)
+KEY = KEY_MATERIAL[:32]
 CONTEXT = "infertap:backend-id:v1"
 vectors = []
 for raw, epoch in [("cache-a", 0), ("cache-b", 0), ("cache-a", 1), ("雪", 0), ("", 0)]:
     message = CONTEXT.encode() + b"\0" + epoch.to_bytes(4, "big") + b"\0" + raw.encode()
-    vectors.append({"raw": raw, "epoch": epoch, "pseudonym": hmac.new(KEY, message, hashlib.sha256).digest()[:16].hex()})
-(ROOT / "conformance/pseudonym/backend.json").write_text(json.dumps({"context": CONTEXT, "test_key_hex": KEY.hex(), "vectors": vectors}, indent=2) + "\n")
+    vectors.append(
+        {
+            "raw": raw,
+            "epoch": epoch,
+            "pseudonym": hmac.new(KEY, message, hashlib.sha256).digest()[:16].hex(),
+        }
+    )
+(ROOT / "conformance/pseudonym/backend.json").write_text(
+    json.dumps(
+        {"context": CONTEXT, "test_key_hex": KEY_MATERIAL.hex(), "vectors": vectors},
+        indent=2,
+    )
+    + "\n"
+)
