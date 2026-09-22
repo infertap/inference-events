@@ -122,8 +122,8 @@ pub fn validate_record(value: &Value) -> Result<(), ValidationError> {
         }
     }
     if kind == "segments_dropped" {
-        let first = object.get("first_seq").and_then(Value::as_u64);
-        let last = object.get("last_seq").and_then(Value::as_u64);
+        let first = object.get("first_seq").and_then(integer_value);
+        let last = object.get("last_seq").and_then(integer_value);
         if matches!((first,last), (Some(a),Some(b)) if a > b) {
             return Err(error("last_seq", "precedes first_seq"));
         }

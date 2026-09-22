@@ -32,6 +32,10 @@ class Compatibility(unittest.TestCase):
         del self.new["$defs"]["store"]["properties"]["block_id"]
         self.assertTrue(module.breaking_changes(self.old, self.new))
 
+    def test_record_kind_removal(self):
+        self.new["oneOf"].pop()
+        self.assertTrue(module.breaking_changes(self.old, self.new))
+
     def test_constraint_change(self):
         self.new["$defs"]["store"]["properties"]["n_tokens"]["maximum"] = 10
         self.assertTrue(module.breaking_changes(self.old, self.new))

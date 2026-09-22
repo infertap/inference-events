@@ -10,7 +10,7 @@ def camel(name):
     return "".join(p.capitalize() for p in name.split("_"))
 
 
-def check_supported_profile(rule, path="schema"):
+def check_supported_profile(rule, path="schema", root=True):
     """Refuse schema keywords the bundled runtime validator does not implement."""
     supported = {
         "$schema",
@@ -33,6 +33,8 @@ def check_supported_profile(rule, path="schema"):
         "then",
         "not",
     }
+    if "oneOf" in rule and not root:
+        raise SystemExit(f"{path}: oneOf is supported only for root record dispatch")
     for key in rule:
         if key not in supported and not key.startswith("x-"):
             raise SystemExit(f"{path}: unsupported validation keyword {key}")
@@ -42,13 +44,13 @@ def check_supported_profile(rule, path="schema"):
         raise SystemExit(f"{path}: references must resolve inside this schema")
     for key in ("properties", "$defs"):
         for name, child in rule.get(key, {}).items():
-            check_supported_profile(child, f"{path}.{name}")
+            check_supported_profile(child, f"{path}.{name}", root=False)
     for key in ("oneOf", "allOf"):
         for child in rule.get(key, []):
-            check_supported_profile(child, path)
+            check_supported_profile(child, path, root=False)
     for key in ("items", "if", "then", "not"):
         if key in rule:
-            check_supported_profile(rule[key], path)
+            check_supported_profile(rule[key], path, root=False)
 
 
 def generate(schema):

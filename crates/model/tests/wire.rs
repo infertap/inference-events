@@ -115,3 +115,21 @@ fn rust_and_standard_json_schema_share_acceptance_cases() {
         );
     }
 }
+
+#[test]
+fn sequence_ordering_accepts_equivalent_integer_representations() {
+    for first in [json!(3), json!(3.0)] {
+        for last in [json!(5), json!(5.0)] {
+            let mut value = json!({"kind":"segments_dropped","at_ms":1.0,
+                "incarnation":"1-1","count":3,"first":"a","last":"b",
+                "first_seq":first,"last_seq":last});
+            assert!(Record::decode(value.clone()).is_ok());
+            value["first_seq"] = last;
+            value["last_seq"] = first.clone();
+            assert!(Record::decode(value)
+                .unwrap_err()
+                .to_string()
+                .contains("precedes"));
+        }
+    }
+}

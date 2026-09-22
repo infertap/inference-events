@@ -6,6 +6,10 @@ from pathlib import Path
 
 def breaking_changes(old, new):
     reasons = []
+    old_kinds = {entry["$ref"] for entry in old["oneOf"]}
+    new_kinds = {entry["$ref"] for entry in new["oneOf"]}
+    if old_kinds - new_kinds:
+        reasons.append("removed record kind")
     for name, definition in old["$defs"].items():
         target = new["$defs"].get(name)
         if target is None:
