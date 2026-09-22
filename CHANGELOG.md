@@ -1,5 +1,10 @@
 # Changelog
 
+## Contract 2.1
+
+Add optional, pseudonymized backend identity to store and eviction records. Clarify
+incomplete offload identity inputs and repeated residency announcements.
+
 ## 1.11, 2026-09-17 — a file with no identity is not a segment
 
 **A producer never ships a headerless file.** §4.3 defined two recovered-segment cases and let

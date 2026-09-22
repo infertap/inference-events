@@ -24,4 +24,4 @@ semantic constraints. Stream ordering, lifecycle scope and provenance obligation
 the specification and conformance suite in the source repository.
 
 Content construction `sha256-chain-128-v2` uses full 128-bit content identities. The wire
-contract is 2.0 and pseudonymized identities remain 32 hexadecimal characters.
+contract is 2.1 and pseudonymized identities remain 32 hexadecimal characters.

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 cd "$(dirname "$0")/.."
-python3 -m black --check tools/gen-schema.py tools/check-schema.py tools/check-compatibility.py tools/test-compatibility.py tools/gen-identity-corpus.py
+python3 -m black --check tools/gen-schema.py tools/check-schema.py tools/check-compatibility.py tools/test-compatibility.py tools/gen-identity-corpus.py tools/gen-backend-corpus.py
 python3 tools/gen-schema.py --check
 python3 tools/check-schema.py
 python3 tools/test-compatibility.py

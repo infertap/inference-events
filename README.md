@@ -62,7 +62,7 @@ compatibility. Changes to public generated types also require an API review.
 
 ## Status
 
-Initial public 1.0 package in preparation. The wire contract is 2.0; the major revision
+Initial public 1.0 package in preparation. The wire contract is 2.1; the major revision
 identifies the 128-bit content construction. Discard pre-release development data before
 using the new construction. No package is published by the validation workflow.
 

@@ -229,6 +229,10 @@
     "epoch": {
      "type": "int64",
      "presence": "optional"
+    },
+    "backend_id": {
+     "type": "utf8",
+     "presence": "optional"
     }
    }
   },
@@ -558,6 +562,10 @@
     },
     "epoch": {
      "type": "int64",
+     "presence": "optional"
+    },
+    "backend_id": {
+     "type": "utf8",
      "presence": "optional"
     }
    }
