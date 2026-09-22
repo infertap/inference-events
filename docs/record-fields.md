@@ -75,6 +75,7 @@ Generated from `schema/records.schema.json`. See the specification for stream se
 | `locality` | `string` | optional | `LOCAL` or `REMOTE`, relative to the publishing holder |
 | `seq` | `integer` | optional | transport sequence of the message that carried this event |
 | `epoch` | `integer` | optional | Pseudonymization key epoch. |
+| `backend_id` | `string` | optional | Optional engine-emitted backend identity, scoped to publisher incarnation, rank, group and tier. Pseudonymized at egress. |
 
 ## heartbeat
 
@@ -182,3 +183,4 @@ Generated from `schema/records.schema.json`. See the specification for stream se
 | `reused` | `boolean` | optional | this record reports a block already cached rather than a fresh insertion. Only under `reuse_reporting: "labelled"` (§2.4) |
 | `seq` | `integer` | optional | transport sequence of the message that carried this event (below) |
 | `epoch` | `integer` | optional | Pseudonymization key epoch. |
+| `backend_id` | `string` | optional | Optional engine-emitted backend identity, scoped to publisher incarnation, rank, group and tier. Pseudonymized at egress. |

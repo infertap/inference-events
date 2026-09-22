@@ -4,7 +4,7 @@ use crate::Presence;
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 
-pub const CONTRACT_VERSION: &str = "2.0";
+pub const CONTRACT_VERSION: &str = "2.1";
 pub const CONTENT_CONSTRUCTION: &str = "sha256-chain-128-v2";
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Endpoint {
@@ -95,6 +95,8 @@ pub struct Evict {
     pub seq: Option<i64>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub epoch: Option<i64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub backend_id: Option<String>,
     #[serde(flatten)]
     pub extensions: Map<String, Value>,
 }
@@ -225,6 +227,8 @@ pub struct Store {
     pub seq: Option<i64>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub epoch: Option<i64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub backend_id: Option<String>,
     #[serde(flatten)]
     pub extensions: Map<String, Value>,
 }

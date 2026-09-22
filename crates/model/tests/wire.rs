@@ -133,3 +133,20 @@ fn sequence_ordering_accepts_equivalent_integer_representations() {
         }
     }
 }
+
+#[test]
+fn backend_identity_round_trip() {
+    for kind in ["store", "evict"] {
+        let mut value = store();
+        value["kind"] = json!(kind);
+        value["backend_id"] = json!("opaque-backend");
+        assert_eq!(
+            Record::decode(value.clone()).unwrap().to_value().unwrap(),
+            value
+        );
+        value["backend_id"] = Value::Null;
+        assert!(Record::decode(value.clone()).is_err());
+        value["backend_id"] = json!(42);
+        assert!(Record::decode(value).is_err());
+    }
+}

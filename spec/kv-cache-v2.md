@@ -1308,3 +1308,52 @@ across every corpus fixture compared against the §2 tables (provenance fields a
 keys excluded). The inline examples in §2 are extracted from the fixtures they cite, never
 composed by hand, and are covered by the same rule. The stamp refreshes whenever §2 or a corpus
 changes; a stale stamp is a review finding.
+
+
+### Backend residency scope (contract 2.1)
+
+`store` and `evict` MAY carry `backend_id`, an opaque engine-emitted backend
+identifier. It is independent of `content_id`: moving a block between backends
+MUST NOT change its content identity. Scope the identifier to publisher incarnation,
+`dp_rank`, `group_idx`, and `tier`. Equal backend identifiers from different publishers
+do not establish a shared physical cache.
+
+Producers MUST preserve a supplied identifier and MUST NOT fabricate one when the
+engine omits it. In pseudonymized mode, map its UTF-8 bytes with HMAC-SHA256 under
+context `infertap:backend-id:v1`, a zero byte, the four-byte big-endian epoch, a zero
+byte, then the identifier bytes. Retain 16 bytes and encode lowercase hexadecimal.
+Raw inspection mode preserves the engine's text.
+
+Absent `backend_id` denotes the existing tier-level observation scope. Its absence
+alone is normal and does not require a warning. Readers MUST distinguish supplied
+backend identifiers within their scope. If multiple backends are known to share an
+unidentified scope, readers may report aggregate tier activity but MUST NOT claim
+per-backend residency. Operators should use distinct stable identifiers when the
+engine supports emitting them. A clear closes every backend in its declared scope;
+a holder reset closes all backends in that holder.
+
+Structural coverage: `crates/model/tests/wire.rs::backend_identity_round_trip`.
+Producer coverage: tap `tests/offload_tiering.rs::backend_residencies_are_independent`
+and `tests/pseudonym_vectors.rs::backend_identity_is_pseudonymized_once`.
+
+### Incomplete engine identity inputs
+
+An offload event can contain tokens while omitting extra keys used by its engine.
+Such an event does not establish a complete content derivation. A producer may reuse
+an unambiguous identity from a complete announcement of the same engine block in
+the same holder incarnation. Otherwise it omits `content_id` and counts the omission.
+A contradictory complete derivation invalidates subsequent lookups until the entry
+is released or cleared. Neither the first nor the last contradictory value is presumed
+correct. This applies the existing omission rule in section 3.1.
+
+Repeated announcements can describe separate resident copies of the same engine
+block. A producer that retains identity state must not release it prematurely after
+only one corresponding removal. Counts describe observed announcements, not a
+measurement of physical copies when events are missing or stores also report reuse.
+State must remain bounded under unmatched announcements and counter overflow.
+
+Producer coverage: tap `tests/offload_tiering.rs` tests
+`duplicate_announcements_survive_until_the_last_remove`,
+`offload_without_extra_keys_reuses_the_complete_gpu_identity`,
+`cold_offload_does_not_establish_an_identity_from_incomplete_inputs`, and
+`contradictory_complete_stores_invalidate_identity_until_release`.
