@@ -48,7 +48,7 @@ def segments_of(rel, doc):
             if lines:
                 out.append((lines[0], lines))
         return out
-    if family in ("vllm-wire", "pseudonym"):
+    if family in ("vllm-wire", "pseudonym", "structure", "content"):
         return []  # wire input and key vectors: not record streams
     raise SystemExit(f"{rel}: fixture family {family!r} has no known shape; teach this check")
 
@@ -62,7 +62,7 @@ def main():
     bad, checked = [], 0
     for path in sorted(CORPUS.rglob("*.json")):
         rel = path.relative_to(ROOT)
-        if rel.parts[1] == "schema":
+        if rel.parts[1] in ("schema", "structure"):
             continue
         doc = json.loads(path.read_text())
         declared = set(doc.get("provenance", {}))

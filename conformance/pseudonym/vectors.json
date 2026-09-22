@@ -1,7 +1,7 @@
 {
  "corpus": "pseudonym",
  "schema_version": "v0",
- "construction": "HMAC-SHA256(key, context||0x00||epoch:u32-be||0x00||raw_id:u64-be)[:16] hex",
+ "construction": "HMAC-SHA256(key, context||0x00||epoch:u32-be||0x00||raw_id)[:16] hex; engine IDs use 8-byte big endian, content IDs use 16-byte big endian",
  "producer": {
   "python": "3.9.6",
   "hashlib": "stdlib",
@@ -86,29 +86,29 @@
    "pseudonym": "dbc635562f4e92525674103f5e887b86"
   },
   {
-   "context": "infertap:content-id:v1",
+   "context": "infertap:content-id:v2",
    "epoch": 0,
-   "raw_id": 0,
-   "pseudonym": "9c57c4245e8ab5e0e7aa1e53f653500d"
+   "raw_id": "0",
+   "pseudonym": "92d732ab07e3a7b05cdb4f3fb1c85cc6"
   },
   {
-   "context": "infertap:content-id:v1",
+   "context": "infertap:content-id:v2",
    "epoch": 0,
-   "raw_id": 1,
-   "pseudonym": "bc250c3ef1e8891c652f21e0051eaef5"
+   "raw_id": "1",
+   "pseudonym": "1244f19469ac05998ee3367120e368ec"
   },
   {
-   "context": "infertap:content-id:v1",
+   "context": "infertap:content-id:v2",
    "epoch": 0,
-   "raw_id": 12955354968414679641,
-   "pseudonym": "1a2af9c5a233d5c61237a19dbbffcb27"
+   "raw_id": "12955354968414679641",
+   "pseudonym": "cf07934300dc314fbc0e567d3e893553"
   },
   {
-   "context": "infertap:content-id:v1",
+   "context": "infertap:content-id:v2",
    "epoch": 7,
-   "raw_id": 1,
-   "pseudonym": "fdf99330056587bd15a489f5c4f22e08"
+   "raw_id": "1",
+   "pseudonym": "06175a22d2e344845397630d87e47f1e"
   }
  ],
- "construction_note": "raw_id widened i64->u64 (2026-07-27): observed vLLM block hashes routinely exceed i64::MAX. The byte encoding is unchanged -- big-endian eight bytes -- so every pseudonym below is bit-for-bit what the i64 form produced. The two rows that were negative are relabelled to the u64 with the identical bit pattern; no value was recomputed. The content-id context pins the SECOND identity space: a content_id is derived from what a block contains and is comparable across the fleet, while a block_id is the engine's and is comparable only inside the process that computed it. They are mapped under different contexts so the two cannot be joined by accident -- the vectors below share raw ids with the block-id vectors and yield different pseudonyms, which is that separation stated as data rather than as prose."
+ "construction_note": "Engine and content identities use separate contexts and fixed input widths. Content construction v2 retains 128 bits."
 }

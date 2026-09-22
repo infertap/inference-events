@@ -10,7 +10,7 @@ identity, explicit scope, and an accounting of what was and was not observed.
 
 ## What is here
 
-- **`spec/kv-cache-v1.md`**: KV cache event semantics, v1. The first contract: records for
+- **`spec/kv-cache-v2.md`**: KV cache event semantics, v2. The first contract: records for
   cache stores, evictions and clears; producer lifecycle and delivery records; identity and
   pseudonymization rules; and the reader obligations that keep derived figures honest.
 - **`conformance/`**: the executable half of the contract. Emission corpora pin what a
@@ -40,9 +40,29 @@ The corpora are derived from the specification's normative text by the generator
 `tools/`, never from a reference implementation. Two independent implementations meeting at
 the same fixtures is the arrangement that makes passing mean something.
 
+## Rust model
+
+The `inference-events` crate provides generated wire records and structural validation.
+`Record::decode` validates complete JSON records and preserves unknown fields and kinds.
+`validate_field` supports projected columnar reads. Stream-level semantics remain defined
+in the specification and independently tested by the conformance corpora.
+
+`schema/records.schema.json` is the structural authority. Run `python3 tools/gen-schema.py`
+to regenerate Rust types, column definitions and the field reference. Markdown formatting
+does not control the schema. To check a contribution:
+
+```sh
+python3 -m pip install -r tools/requirements.txt
+scripts/preflight.sh
+```
+
 ## Status
 
-v1 draft. `infertap` is the reference producer; the `vllm-wire` corpus documents its mapping
+Initial public 1.0 package in preparation. The wire contract is 2.0; the major revision
+identifies the 128-bit content construction. Discard pre-release development data before
+using the new construction. No package is published by the validation workflow.
+
+ `infertap` is the reference producer; the `vllm-wire` corpus documents its mapping
 from vLLM's native events, from captured bytes of synthetic traffic. Additional event
 families (scheduler, request lifecycle, tier transfer) are candidates for sibling contracts
 in this repository; they will be specified when a second concrete domain exists, not before.

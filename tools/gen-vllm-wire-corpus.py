@@ -12,7 +12,7 @@ Two rules it follows:
 1. **Valid fixtures use real captured bytes.** Every `wire_hex` below came off a socket. None is
    constructed here.
 2. **Expected events are derived independently.** The derivation in `derive()` implements the
-   normative semantics from the specification (spec/kv-cache-v1.md) directly, in Python, from the decoded
+   normative semantics from the specification (spec/kv-cache-v2.md) directly, in Python, from the decoded
    msgpack -- it does not call the Rust adapter and does not mirror its structure. If the two
    disagree, one of them is wrong, and finding that out is the entire point of a corpus.
 
@@ -44,7 +44,7 @@ OUT = pathlib.Path(__file__).resolve().parent.parent / "conformance" / "vllm-wir
 # Written from the documented reference construction, NOT transcribed
 # from the Rust. A corpus is worth having because two implementations agree; a transcription
 # only proves one of them agrees with itself.
-CONTENT_TAG = b"infertap:content-key:v1\x00"
+CONTENT_TAG = b"infertap:content-key:v2\x00"
 CONTENT_ROOT = 0
 
 
@@ -53,7 +53,7 @@ def content_chain(parent, tokens, extra_keys):
     throughout, so no field boundary can be shifted into another's bytes."""
     h = hashlib.sha256()
     h.update(CONTENT_TAG)
-    h.update(parent.to_bytes(8, "big"))
+    h.update(parent.to_bytes(16, "big"))
     h.update(len(tokens).to_bytes(4, "big"))
     for t in tokens:
         h.update(t.to_bytes(4, "big"))
@@ -66,7 +66,7 @@ def content_chain(parent, tokens, extra_keys):
             kb = k.encode("utf-8")
             h.update(len(kb).to_bytes(4, "big"))
             h.update(kb)
-    return int.from_bytes(h.digest()[:8], "big")
+    return int.from_bytes(h.digest()[:16], "big")
 
 
 def derive(batch):
@@ -137,7 +137,7 @@ def derive(batch):
                         ev["token_ids"][i * bs : (i + 1) * bs],
                         [str(x) for x in entry] if entry is not None else None,
                     )
-                    e["content_id"] = prev
+                    e["content_id"] = str(prev)
                 else:
                     prev = None
                 events.append(e)
