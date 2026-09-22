@@ -355,9 +355,7 @@ two heartbeats describes the span between them.
 
 Fields: [generated `heartbeat` definition](../docs/record-fields.md#heartbeat).
 
-Each `endpoints` element carries:
-
-Fields: [generated `heartbeat` definition](../docs/record-fields.md#heartbeat).
+Each `endpoints` element uses the [generated `Endpoint` definition](../docs/record-fields.md#endpoint).
 
 **`reuse_reporting` rides all three lifecycle kinds**, exactly as the canary does and for the
 same reason (§3.4): an analysis window need not contain a start record, and a declaration a

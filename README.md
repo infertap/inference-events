@@ -56,6 +56,10 @@ python3 -m pip install -r tools/requirements.txt
 scripts/preflight.sh
 ```
 
+The crate follows Rust package semantic versioning independently of the wire contract.
+The compatibility gate checks wire-schema changes; it does not certify Rust source
+compatibility. Changes to public generated types also require an API review.
+
 ## Status
 
 Initial public 1.0 package in preparation. The wire contract is 2.0; the major revision

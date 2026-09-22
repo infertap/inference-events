@@ -26,8 +26,8 @@ Deployment acceptance is verified separately from model conformance.
 5. Integrate the pinned model into the tap. Separate engine u64 identities from content
    u128 identities, update resident-state budgeting and pseudonymization, retain existing
    output width, and verify the full producer suite.
-6. Integrate the shared wire model into the analyzer's segment boundary through its segment boundary. Preserve projected Parquet reads, schema evolution and full
-   identity grouping. Verify decoding, analyzer semantics and generation separation.
+6. Integrate the shared wire model at the analyzer's segment boundary.
+   Preserve projected Parquet reads, schema evolution and full identity grouping. Verify decoding, analyzer semantics and generation separation.
 7. Run cross-repository JSONL/Parquet round trips, all required local gates, and review
    diffs. Use pull requests for review. Publishing packages is a separate release action.
 
@@ -40,6 +40,7 @@ Deployment acceptance is verified separately from model conformance.
 - Generator tests must not be the only evidence: independent vectors and negative cases
   verify the meaning, not merely agreement between generated files.
 
-## Completion record
+## Acceptance evidence
 
-Pending implementation and verification. No release-readiness claim is made by this plan.
+Completion requires green upstream and consumer gates, cross-repository round trips,
+and reviewable pull requests. Deployment validation remains a separate release gate.
