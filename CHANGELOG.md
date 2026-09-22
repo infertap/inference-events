@@ -492,3 +492,11 @@ field, so rule 3 asks for neither a minor nor a major increment.
 Initial public cut: KV cache event semantics v1, with its full conformance corpora
 (telemetry, lifecycle, delivery, pseudonym, reader), the `vllm-wire` companion corpus with
 its captured source data, the fixture generators, and the contract hash tool.
+
+## Initial public model package (in preparation)
+
+- Add authoritative JSON Schema, generated Rust wire types and column definitions.
+- Validate structural constraints and preserve future fields and record kinds.
+- Add schema generation, compatibility, conformance, package and MSRV checks.
+- Define wire contract 2.0 with 128-bit content identities and unchanged pseudonym width.
+- State collision probabilities without claiming every collision is detectable.

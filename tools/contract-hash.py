@@ -14,7 +14,7 @@ churn and moves exactly once per real change.
 
 Scope is `conformance/`: the corpora ARE the machine-readable contract, and this design's own
 rule is that a normative change arrives with a fixture. A prose-only change to
-`spec/kv-cache-v1.md` therefore will not move this hash — a gap worth knowing about,
+`spec/kv-cache-v2.md` therefore will not move this hash — a gap worth knowing about,
 and the alternative (hashing the prose) reintroduces exactly the noise the commit-SHA approach
 had.
 

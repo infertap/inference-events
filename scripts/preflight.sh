@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+set -euo pipefail
+cd "$(dirname "$0")/.."
+python3 -m black --check tools/gen-schema.py tools/check-schema.py tools/check-compatibility.py tools/test-compatibility.py tools/gen-identity-corpus.py
+python3 tools/gen-schema.py --check
+python3 tools/check-schema.py
+python3 tools/test-compatibility.py
+python3 tools/check-compatibility.py --against schema/baselines/2.0.json schema/records.schema.json
+python3 tools/check-corpora.py
+python3 tools/contract-hash.py --check
+cargo fmt --all --check
+cargo clippy --workspace --all-targets --locked -- -D warnings
+cargo test --workspace --locked
+cargo package -p inference-events --allow-dirty --locked
