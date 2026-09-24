@@ -1,26 +1,11 @@
 #!/usr/bin/env python3
-"""
-Regenerate conformance/vllm-wire/ from a captured wire dump.
+"""Generate wire fixtures from captured MessagePack payloads.
 
-Run this whenever the engine's wire format moves. The previous corpus was authored by reading
-vLLM's source and did not survive contact with a running 0.26.0 engine -- it described tag-first
-arrays that the engine had stopped emitting, and integer hashes narrow enough to fit i64. This
-script exists so the corpus is never again a description of what we believe the wire to be.
+Captured cases preserve the source bytes. Constructed cases exercise malformed input
+and fields absent from the captures. Expected events are derived independently from
+the specification without invoking a consumer implementation.
 
-Two rules it follows:
-
-1. **Valid fixtures use real captured bytes.** Every `wire_hex` below came off a socket. None is
-   constructed here.
-2. **Expected events are derived independently.** The derivation in `derive()` implements the
-   normative semantics from the specification (spec/kv-cache-v2.md) directly, in Python, from the decoded
-   msgpack -- it does not call the Rust adapter and does not mirror its structure. If the two
-   disagree, one of them is wrong, and finding that out is the entire point of a corpus.
-
-Malformed fixtures ARE constructed here, deliberately: they are adversarial inputs, not engine
-output, so there is nothing to capture. Each is a mutation of a real payload, so it stays
-realistic in every respect except the one thing being tested.
-
-    python3 tools/gen-vllm-wire-corpus.py capture/capture-sha256.jsonl capture/capture-salt.jsonl
+Run with capture/capture-sha256.jsonl and capture/capture-salt.jsonl.
 """
 
 import argparse
@@ -174,7 +159,7 @@ def derive(batch):
             events.append(e)
 
         else:
-            unknown += 1  # a kind we do not model: skipped and counted, never fatal
+            unknown += 1  # Count and skip unknown event kinds.
 
     return events, unknown
 
@@ -283,7 +268,7 @@ SELECTORS = [
 
 
 def build_valid(records):
-    """Real bytes, one fixture per distinct shape we can find in the capture."""
+    """Select captured bytes for each available event shape."""
     fixtures, used = [], set()
     for name, note, pred in SELECTORS:
         best = None
@@ -356,8 +341,7 @@ def build_constructed(records):
             real["hex"][: len(real["hex"]) // 2],
             err("decode", ""),
         ),
-        # 0xc1 is the one byte msgpack reserves as NEVER USED, so this cannot decode under any
-        # reading. (0xff was the previous choice and was wrong: it is negative fixint -1.)
+        # MessagePack reserves 0xc1; a conforming decoder must reject it.
         fx(
             "garbage_bytes",
             "0xc1 is never-used in msgpack: undecodable by construction",
@@ -396,7 +380,7 @@ def build_constructed(records):
             pack([ts, "nope", dp]),
             err("normalize", "events missing"),
         ),
-        # --- the OLD wire format, which must now fail closed rather than half-decode ---
+        # Unsupported tag-first arrays must fail decoding.
         fx(
             "event_is_tag_array",
             "the pre-0.26 tag-first array form. Pinned as MALFORMED on purpose: a decoder that "
@@ -419,7 +403,7 @@ def build_constructed(records):
         ),
         fx(
             "hash_is_negative",
-            "a negative block hash: no longer representable once hashes are u64",
+            "a negative block hash is outside the unsigned identity range",
             mutate(block_hashes=[-1]),
             err("normalize", "unsigned integer"),
         ),
@@ -486,12 +470,8 @@ def build_constructed(records):
         )
     )
 
-    # --- locality: on the wire at 0.26.0, invisible in every capture --------------------
-    # msgspec's omit_defaults means a field left at its default is absent from the bytes, so a
-    # capture-derived corpus cannot distinguish "this version lacks the field" from "this run
-    # never set it". Our single-GPU, no-offload runs left locality unset, so it must be
-    # constructed -- and it is exactly the field a consumer must not guess at, since counting a
-    # remote block as a local copy invents duplication.
+    # Default-valued locality fields are omitted from captured messages. Construct
+    # explicit values to check that readers preserve the declared ownership scope.
     for tag, note in [
         ("REMOTE", "a block in a store the publisher can reach but does not own"),
         ("LOCAL", "the explicit form of what every captured event meant implicitly"),

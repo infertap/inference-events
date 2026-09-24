@@ -73,7 +73,7 @@ explain their meaning; stream-level obligations remain normative prose.
 ### 2.1 Encoding
 
 The record model is independent of any encoding. Two encodings are contractual, each with one
-role (since 1.7; the roles made exclusive in 1.9):
+role:
 
 **JSON Lines is the write-ahead form, and only that**: one JSON object per line, UTF-8 encoded,
 each line terminated by a single newline. There is no envelope and no framing. A producer writes
@@ -513,7 +513,7 @@ data cannot support that. [^clock]
 
 ### 2.7 Workload class
 
-**Since 1.2.** A producer MAY declare a `workload_class` on its `segment_open` record: a name, in
+A producer MAY declare a `workload_class` on its `segment_open` record: a name, in
 the operator's own vocabulary, for what this producer's traffic is FOR. Conventionally a stream
 declares something like `agentic` or `batch`. The vocabulary is not specified here, exactly as
 provenance keys are not.
@@ -675,7 +675,7 @@ and `tests/pseudonym_vectors.rs::backend_identity_is_pseudonymized_once`.
 `key_epoch` scopes an identity space. Identities carrying different `key_epoch` values were derived
 under different key material or a different generation of it, and are unrelated.
 
-**A producer declares it on every `segment_open`** (since 1.5), for the reason §5.8 gives for the
+**A producer declares it on every `segment_open`**, for the reason §5.8 gives for the
 liveness bounds and §2.2 for provenance: it is constant for a producer run, a reader needs it to
 interpret every record behind it, and a declaration reachable only through a start record is one a
 retention policy can take away. It is the operator's, set alongside the key material it counts
@@ -1003,29 +1003,6 @@ Additive changes, meaning new record kinds and new optional fields, increment th
 Anything else, including any change in the meaning of an existing field, increments the major
 version. A change in meaning MUST NOT be made without a major version increment. [^contractver]
 
-**1.2 is minor by decision, not by the law above, and the difference is recorded rather than
-disguised.** Requiring provenance on `segment_open` alone makes a 1.1 producer that repeats it
-non-conforming, and a producer-breaking change is a major version under the paragraph above.
-
-It is taken as a minor version because this contract currently has exactly one producer and one
-reader, both in this organisation, with no third party holding either. There is no fleet to skew
-and no consumer to strand. **The reader side does not break at all** — the header has carried
-provenance in every segment ever written, so a 1.2 reader reads 1.1 segments with no second code
-path.
-
-**This exemption expires the moment a producer exists that we do not ship.** At that point the
-paragraph above governs without exception, and a change of this shape takes a major version. A
-contract that keeps granting itself exemptions is not a contract, so this one is written down with
-its expiry rather than left as precedent.
-
-**1.7 is minor by the same decision, and shares the same expiry.** Making Parquet the shipped form
-changes the meaning of §2.1, which the paragraph above prices as a major version. It is taken as
-minor because the 1.2 conditions hold verbatim: one producer, one reader, both in this
-organisation, no third party holding either. The reader side again does not break — a 1.7 reader
-dispatches on content (§2.1), so every segment ever written, all of them JSON Lines, reads exactly
-as before. When the 1.2 exemption expires, this one expires with it, and encoding changes of this
-shape take the major version the law prices them at.
-
 ### 6.2 The mixed-fleet law
 
 **Producer version skew is steady state, not an error condition.** A fleet is upgraded gradually, so
@@ -1039,7 +1016,7 @@ future minor version a breaking one.
 
 ## 7. Out of scope
 
-These are deliberately out of scope, stated here so they are not re-added later:
+The contract does not specify:
 
 - **Transport.** How segments travel from producer to reader. This contract specifies a directory
   and a naming convention, not a protocol. Any mechanism preserving file contents satisfies it.
@@ -1127,7 +1104,7 @@ Each note names the fixture that would fail an implementation violating the requ
 
 [^forms]: `delivery/records.json` carries the sealed-segment fixture in both forms: the `segment`
     object's `lines`, and the Parquet twin the object names in `parquet_twin` — the same records,
-    one file per encoding, written by a reference Parquet implementation rather than by ours. A
+    one file per encoding, written by a reference Parquet implementation independently of the producer and reader. A
     reader proves both halves of the MUST by decoding both to the same record sequence.
 
 [^dispatch]: The same fixture pair: the twin's first four bytes are `PAR1`, the JSONL fixture's

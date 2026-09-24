@@ -41,3 +41,10 @@ put user-facing behavior in the reference documentation.
 5. After maintainer approval, publish the crate and create the corresponding release tag.
 
 Publishing is a separate maintainer action. A passing validation workflow does not publish.
+
+## Documentation and comments
+
+Describe current behavior, constraints, and the rationale needed to maintain the code.
+Keep user-visible changes in the changelog. Internal audit reports, work plans, debugging
+narratives, machine logs, and operational transcripts do not belong in the public tree.
+Retain test inputs and concise provenance needed to reproduce conformance fixtures.

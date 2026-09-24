@@ -121,7 +121,7 @@ def segment(
     """One sealed segment: the header the delivery contract demands, then the records.
 
     `provenance` and `workload_class` go on the HEADER and are declared once for the whole
-    segment (spec 2.2, 2.7). Since 1.2 that is the ONLY conforming place: a producer MUST NOT
+    segment (spec 2.2, 2.7). The header is the only conforming place: a producer MUST NOT
     repeat provenance on other records. `per_record_provenance` builds the 1.1 shape a reader
     still meets across its retention window -- the header carries it there too, which is what
     lets one code path read both.
@@ -137,7 +137,7 @@ def segment(
         header.update(provenance)
     if workload_class is not None:
         header["workload_class"] = workload_class
-    # Spec 5.8, since 1.3: the liveness bounds are declared on EVERY header. An analysis window
+    # Spec 5.8: the liveness bounds are declared on EVERY header. An analysis window
     # need not contain a start record, and a declaration a reader cannot reach is one it cannot
     # apply -- the reason 3.4 already gives for the canary. A fixture states them through its
     # `agent_start` for readability; they belong to the segment.
@@ -1450,7 +1450,7 @@ FIXTURES = [
     (
         "uncovered_a_discarded_recovery_declares_no_coverage",
         "run-2 found a headerless file at start and discarded it, declaring the discard as the "
-        "second record of its first segment (spec 4.3, since 1.11). The span that file covered "
+        "second record of its first segment (spec 4.3). The span that file covered "
         "was already uncovered -- it precedes run-2's start -- so the window is byte-for-byte "
         "the crash fixture's: a reader that widens or narrows it on the declaration fails here",
         [
@@ -1606,7 +1606,7 @@ FIXTURES = [
     (
         "staleness_without_declared_bounds_has_no_basis",
         "a 1.1-era producer's mid-run segment: heartbeats, then silence past any bound a "
-        "reader might guess. Since 1.3 every header declares the bounds, so an undeclared "
+        "reader might guess. Every header declares the bounds, so an undeclared "
         "stream is only expressible as an old producer the mixed-fleet law (spec 6.2) still "
         "admits -- and for it the premise holds exactly: the two declared bounds are the "
         "ENTIRE basis for calling a producer stale (spec 5.8), unobserved declarations are "
@@ -1623,7 +1623,7 @@ FIXTURES = [
         ],
         {"staleness": {RUN1: "no_basis", RUN2: "live"}},
     ),
-    # --- 2.2 / 2.7: run-constant fields ride the header (since 1.2) ---------------------
+    # --- 2.2 / 2.7: run-constant fields ride the header ---------------------
     (
         "provenance_declared_once_applies_to_every_record",
         "the header carries provenance and the records carry none. A reader applies the "

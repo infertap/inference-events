@@ -1,7 +1,7 @@
 {
  "corpus": "lifecycle",
  "schema_version": "v0",
- "note": "Pins the three lifecycle record kinds byte-for-byte: agent_start (boot + config summary), heartbeat (cumulative envelope stats + per-endpoint sub-stats), agent_stop (reason + closing stats). Absent-not-null is pinned deliberately: the stop case omits noraw_scanned and rss_bytes, and one heartbeat endpoint omits last_msg_at_ms (nothing seen yet). Lifecycle records carry no instance_id (agent-scoped) and no block ids (the pseudonymizer leaves them unmapped). Timestamps are at real wall-clock scale on purpose -- the previous corpus used at_ms: 100.0, which is why a seconds-vs-milliseconds error stayed invisible. capacity_cases pins the identity_refused signal separately: instance-scoped by design (it declares a loss for one observed holder), with engine-clock window fields beside a producer-clock at_ms, named apart.",
+ "note": "Pins the three lifecycle record kinds byte-for-byte: agent_start (boot + config summary), heartbeat (cumulative envelope stats + per-endpoint sub-stats), agent_stop (reason + closing stats). Absent-not-null is pinned deliberately: the stop case omits noraw_scanned and rss_bytes, and one heartbeat endpoint omits last_msg_at_ms (nothing seen yet). Lifecycle records carry no instance_id (agent-scoped) and no block ids (the pseudonymizer leaves them unmapped). Timestamps use epoch milliseconds to expose unit conversion errors. capacity_cases pins the identity_refused signal separately: instance-scoped by design (it declares a loss for one observed holder), with engine-clock window fields beside a producer-clock at_ms, named apart.",
  "provenance": {
   "gpu": "fixture",
   "vllm_version": "0.26.0",

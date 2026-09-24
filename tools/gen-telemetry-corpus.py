@@ -322,7 +322,7 @@ FIXTURES = [
         "residency invents duplication. Carried as-said on both store and evict; the agent states "
         "which side of the line the engine put the block on and classifies nothing. Never seen in "
         "the capture: KVCacheEvent sets omit_defaults, so a field left at its default is invisible "
-        "on the wire, and our single-GPU run left this one unset",
+        "on the wire; this constructed case checks its explicit value",
         [
             stored("a", H1, T0, locality="LOCAL"),
             stored("a", H2, T0 + 10.0, locality="REMOTE"),

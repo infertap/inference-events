@@ -32,7 +32,7 @@ WORDS = (
 
 
 def make_prefix(rng, approx_tokens):
-    # ~0.75 words per token is close enough; we only need length, not meaning.
+    # Approximate token length with 0.75 words per token.
     n = int(approx_tokens * 0.75)
     return " ".join(rng.choice(WORDS) for _ in range(n))
 
