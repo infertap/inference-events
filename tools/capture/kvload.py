@@ -99,7 +99,9 @@ def main():
                 print(f"[kvload] request error: {e}", file=sys.stderr)
             if n % 50 == 0:
                 el = time.time() - started
-                print(f"[kvload] {n}/{args.requests}  {n/el:.1f} req/s", file=sys.stderr)
+                print(
+                    f"[kvload] {n}/{args.requests}  {n/el:.1f} req/s", file=sys.stderr
+                )
 
     threads = [
         threading.Thread(target=worker, args=(i,), daemon=True)

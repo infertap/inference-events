@@ -108,7 +108,7 @@ def main():
     frame_arity = Counter()
     batch_arity = Counter()
     tag_counts = Counter()
-    shapes = defaultdict(set)          # (event_tag, field_index) -> {descriptors}
+    shapes = defaultdict(set)  # (event_tag, field_index) -> {descriptors}
     batch_field_shapes = defaultdict(set)  # batch_index -> {descriptors}
     decode_errors = Counter()
     seen_signatures = set()
@@ -186,7 +186,9 @@ def main():
                 hex_stored += 1
             out.write(json.dumps(rec) + "\n")
 
-    elapsed = (last_arrival - first_arrival) if (first_arrival and last_arrival) else 0.0
+    elapsed = (
+        (last_arrival - first_arrival) if (first_arrival and last_arrival) else 0.0
+    )
     gaps = 0
     if len(seqs) > 1:
         for a, b in zip(seqs, seqs[1:]):
@@ -211,7 +213,9 @@ def main():
     w(f"publisher seq gaps {gaps}   (nonzero = the publisher outran this capture)")
     w("")
     w("-- framing ---------------------------------------------------------")
-    w(f"multipart arity   {dict(frame_arity)}   (vLLM publishes 3: topic, seq, payload)")
+    w(
+        f"multipart arity   {dict(frame_arity)}   (vLLM publishes 3: topic, seq, payload)"
+    )
     w("")
     w("-- batch envelope --------------------------------------------------")
     w(f"batch arity       {dict(batch_arity)}")
@@ -241,14 +245,18 @@ def main():
     w(f"block_hashes  (BlockStored[1])  {bs_hash}")
     w("    -> 'list[N]<bytes(32)>' = sha256 as msgpack bin. infertap's i64 model")
     w("       cannot hold it; T0-b answered, N4 is confirmed as a type change.")
-    w("    -> 'list[N]<int(256b)>'  = oversized int instead. Different fix, same verdict.")
+    w(
+        "    -> 'list[N]<int(256b)>'  = oversized int instead. Different fix, same verdict."
+    )
     w("    -> 'list[N]<int(<=63b)>' = a 64-bit hash. Check which algo produced it.")
     w(f"parent_hash   (BlockStored[2])  {bs_parent}")
     w(f"token_ids     (BlockStored[3])  {bs_tokens}")
     w("    -> anything but 'null' means prompt content transits this socket (N1).")
     w(f"lora_id       (BlockStored[5])  {bs_lora}")
     dp = "PRESENT" if any(k >= 3 for k in batch_arity) else "absent"
-    w(f"dp_rank       (batch[2])        {dp}  {sorted(batch_field_shapes.get(2, set()))}")
+    w(
+        f"dp_rank       (batch[2])        {dp}  {sorted(batch_field_shapes.get(2, set()))}"
+    )
     w("    -> PRESENT means workers share this endpoint; N2 is live and instance")
     w("       identity must fold it in.")
     report = "\n".join(L)
@@ -272,7 +280,9 @@ def main():
         "batch_arity": dict(batch_arity),
         "event_counts": dict(tag_counts),
         "field_shapes": {f"{t}[{i}]": sorted(v) for (t, i), v in shapes.items()},
-        "batch_field_shapes": {str(i): sorted(v) for i, v in batch_field_shapes.items()},
+        "batch_field_shapes": {
+            str(i): sorted(v) for i, v in batch_field_shapes.items()
+        },
         "python": platform.python_version(),
         "platform": platform.platform(),
         "TODO_fill_in": {

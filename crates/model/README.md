@@ -25,3 +25,11 @@ the specification and conformance suite in the source repository.
 
 Content construction `sha256-chain-128-v2` uses full 128-bit content identities. The wire
 contract is 2.1 and pseudonymized identities remain 32 hexadecimal characters.
+
+Use `validate_producer_record` before emitting a record under the current contract. It
+rejects unknown kinds. Reader validation accepts unknown kinds with a valid `kind` and
+`at_ms` envelope so newer producers remain readable.
+
+`ValidationError` exposes a field `path` and an `ErrorKind` category. Errors do not echo
+field values. Serialization rejects extension keys reserved by the enclosing structure,
+including omitted optional fields and nested endpoint fields.

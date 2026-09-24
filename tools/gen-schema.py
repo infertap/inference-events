@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Generate wire types, the column catalog, and field reference from JSON Schema."""
 import argparse, json, pathlib, subprocess
+from schema_profile import validate_profile, record_kinds
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 SOURCE = ROOT / "schema/records.schema.json"
@@ -10,53 +11,10 @@ def camel(name):
     return "".join(p.capitalize() for p in name.split("_"))
 
 
-def check_supported_profile(rule, path="schema", root=True):
-    """Refuse schema keywords the bundled runtime validator does not implement."""
-    supported = {
-        "$schema",
-        "$id",
-        "title",
-        "description",
-        "oneOf",
-        "$defs",
-        "type",
-        "properties",
-        "required",
-        "additionalProperties",
-        "const",
-        "minimum",
-        "maximum",
-        "items",
-        "$ref",
-        "allOf",
-        "if",
-        "then",
-        "not",
-    }
-    if "oneOf" in rule and not root:
-        raise SystemExit(f"{path}: oneOf is supported only for root record dispatch")
-    for key in rule:
-        if key not in supported and not key.startswith("x-"):
-            raise SystemExit(f"{path}: unsupported validation keyword {key}")
-    if rule.get("additionalProperties", True) is not True:
-        raise SystemExit(f"{path}: extensions must remain forward compatible")
-    if "$ref" in rule and not rule["$ref"].startswith("#/$defs/"):
-        raise SystemExit(f"{path}: references must resolve inside this schema")
-    for key in ("properties", "$defs"):
-        for name, child in rule.get(key, {}).items():
-            check_supported_profile(child, f"{path}.{name}", root=False)
-    for key in ("oneOf", "allOf"):
-        for child in rule.get(key, []):
-            check_supported_profile(child, path, root=False)
-    for key in ("items", "if", "then", "not"):
-        if key in rule:
-            check_supported_profile(rule[key], path, root=False)
-
-
 def generate(schema):
-    check_supported_profile(schema)
+    validate_profile(schema)
     defs = schema["$defs"]
-    kinds = [r["$ref"].rsplit("/", 1)[1] for r in schema["oneOf"]]
+    kinds = record_kinds(schema)
     catalog = {
         "schema_version": "v1",
         "note": "Generated from schema/records.schema.json by tools/gen-schema.py.",
@@ -80,8 +38,13 @@ def generate(schema):
         "",
     ]
     rust += [
+        "/// Wire contract version emitted by producers using this schema.",
         f'pub const CONTRACT_VERSION: &str = {json.dumps(schema["x-contract-version"])};',
+        "/// Content identity construction defined by the wire contract.",
         f'pub const CONTENT_CONSTRUCTION: &str = {json.dumps(schema["x-content-construction"])};',
+    ]
+    rust += [
+        f'pub(crate) const RECORD_KINDS: &[&str] = &[{", ".join(json.dumps(k) for k in kinds)}];'
     ]
     docs = [
         "# Record fields",
@@ -92,6 +55,7 @@ def generate(schema):
     for name, obj in defs.items():
         fields = {}
         rust += [
+            f"/// Wire fields for `{name}`. Use [`crate::Record::decode`] for complete record validation.",
             "#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]",
             f"pub struct {camel(name)} {{",
         ]
@@ -112,6 +76,11 @@ def generate(schema):
             )
             if field == "kind":
                 continue
+            description = spec.get("description", f"The {field} field.")
+            rust += [
+                "    /// " + line.replace("[", "\\[").replace("]", "\\]")
+                for line in description.splitlines()
+            ]
             ty = {
                 "utf8": "String",
                 "int64": "i64",
@@ -135,11 +104,37 @@ def generate(schema):
                     ]
             rust += [f"    pub {field}: {ty},"]
         rust += [
-            "    #[serde(flatten)]",
+            "    /// Extension fields. Serialization rejects names reserved by this structure.",
+            f'    #[serde(flatten, serialize_with = "{camel(name)}::serialize_extensions")]',
             "    pub extensions: Map<String, Value>,",
             "}",
             "",
         ]
+        reserved = ", ".join(json.dumps(field) for field in obj["properties"])
+        rust += [
+            f"impl {camel(name)} {{",
+            f"    const RESERVED_FIELDS: &'static [&'static str] = &[{reserved}];",
+            "    fn serialize_extensions<S: serde::Serializer>(extensions: &Map<String, Value>, serializer: S) -> Result<S::Ok, S::Error> {",
+            '        crate::check_extensions(extensions, Self::RESERVED_FIELDS, "record").map_err(serde::ser::Error::custom)?;',
+            "        extensions.serialize(serializer)",
+            "    }",
+            "    pub(crate) fn check_extensions(&self, path: &str) -> Result<(), crate::ValidationError> {",
+            "        crate::check_extensions(&self.extensions, Self::RESERVED_FIELDS, path)?;",
+        ]
+        for field, spec in obj["properties"].items():
+            if spec["x-column-type"] == "list<struct>":
+                optional = field not in obj.get("required", [])
+                iterator = (
+                    f"self.{field}.iter().flatten()"
+                    if optional
+                    else f"self.{field}.iter()"
+                )
+                rust += [
+                    f"        for (index, value) in {iterator}.enumerate() {{",
+                    f'            value.check_extensions(&format!("{{path}}.{field}[{{index}}]"))?;',
+                    "        }",
+                ]
+        rust += ["        Ok(())", "    }", "}", ""]
         docs += [""]
         if name == "Endpoint":
             catalog["endpoints_element"] = fields
@@ -148,14 +143,26 @@ def generate(schema):
     rust += [
         "#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]",
         '#[serde(tag = "kind")]',
+        "/// Record kinds defined by this schema. Direct Serde decoding checks layout only.",
         "pub enum KnownRecord {",
     ]
     for kind in kinds:
         rust += [
+            f"    /// The `{kind}` record.",
             f'    #[serde(rename = "{kind}")]',
             f"    {camel(kind)}({camel(kind)}),",
         ]
     rust += ["}", ""]
+    rust += [
+        "impl KnownRecord {",
+        "    pub(crate) fn check_extensions(&self) -> Result<(), crate::ValidationError> {",
+        "        match self {",
+    ]
+    rust += [
+        f'Self::{camel(kind)}(record) => record.check_extensions("record"),'
+        for kind in kinds
+    ]
+    rust += ["        }", "    }", "}"]
     formatted = subprocess.run(
         ["rustfmt", "--edition", "2021"],
         input="\n".join(rust),

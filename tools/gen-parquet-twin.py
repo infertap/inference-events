@@ -1,25 +1,9 @@
 #!/usr/bin/env python3
-"""Generate the Parquet twin of the delivery corpus's sealed-segment fixture.
+"""Generate the Parquet encoding of the delivery corpus's sealed segment.
 
-Spec 2.1 makes Parquet the shipped form and JSON Lines the write-ahead form, with one record
-model in both. This writes `conformance/delivery/seg-<incarnation>-<seq>.parquet`: the same
-records as the `segment` object's `lines` in `records.json`, one row each, in order. The pair is
-the covering fixture for the encoding-dispatch rule (PAR1 versus a JSON object) and for the
-form-equivalence MUST: a reader proves both by decoding both files to the same record sequence.
-
-The schema is derived from `conformance/schema/records.json` -- the union of every kind's typed
-fields as columns, plus a map column `extra` for what the schema does not type (spec 2.1). A
-null cell encodes ABSENT. In `extra`, a string value rides verbatim and any other value as its
-JSON text, matching the reference reader. Column chunks are Snappy-compressed, the contract's
-codec floor.
-
-Deliberately written with pyarrow, a REFERENCE Parquet implementation, rather than with either
-of this contract's own implementations: a fixture our writer wrote and our reader read would
-prove interop with ourselves. pyarrow is required at GENERATION time only; the fixture is
-committed bytes, and regeneration under a different pyarrow version may legitimately move the
-bytes (and so the corpus hash) without moving the records.
-
-    python3 tools/gen-parquet-twin.py     # requires pyarrow
+Use the generated column catalog and preserve record order. Unknown fields use the
+extra map; strings remain literal and other values use JSON text. PyArrow provides
+an independent encoder. Its pinned version makes regeneration reproducible.
 """
 
 import json
@@ -49,7 +33,10 @@ def build_schema(spec):
     """
     endpoints_struct = pa.struct(
         sorted(
-            ((name, ARROW_TYPES[f["type"]]) for name, f in spec["endpoints_element"].items()),
+            (
+                (name, ARROW_TYPES[f["type"]])
+                for name, f in spec["endpoints_element"].items()
+            ),
             key=lambda nf: nf[0],
         )
     )
@@ -62,7 +49,9 @@ def build_schema(spec):
                 t = ARROW_TYPES[f["type"]]
             prior = fields.get(name)
             if prior is not None and prior != t:
-                raise SystemExit(f"field {name!r} is two types across kinds: {prior} vs {t}")
+                raise SystemExit(
+                    f"field {name!r} is two types across kinds: {prior} vs {t}"
+                )
             fields[name] = t
     head = ["kind", "at_ms"]
     ordered = head + sorted(k for k in fields if k not in head)

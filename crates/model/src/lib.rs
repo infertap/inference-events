@@ -6,6 +6,12 @@
 //! remain the responsibility of producers and readers. Unknown fields and kinds survive
 //! decoding. Projected columnar reads can validate individual fields with [`validate_field`].
 
+#![deny(missing_docs, rustdoc::broken_intra_doc_links)]
+#![forbid(unsafe_code)]
+#![doc = include_str!("../README.md")]
+
+mod error;
+pub use error::{ErrorKind, ValidationError};
 mod generated;
 pub use generated::*;
 use serde_json::{Map, Value};
@@ -19,12 +25,16 @@ pub const COLUMN_SCHEMA_JSON: &str = include_str!("../schema/columns.json");
 /// Preserve omission separately from explicit null in nullable optional fields.
 #[derive(Debug, Clone, PartialEq, Default)]
 pub enum Presence<T> {
+    /// The field was omitted.
     #[default]
     Absent,
+    /// The field was explicitly null.
     Null,
+    /// The field carried a value.
     Value(T),
 }
 impl<T> Presence<T> {
+    /// Whether serialization should omit this field.
     pub fn is_absent(&self) -> bool {
         matches!(self, Self::Absent)
     }
@@ -43,18 +53,26 @@ impl<'de, T: serde::Deserialize<'de>> serde::Deserialize<'de> for Presence<T> {
     }
 }
 
-/// A structural error. Diagnostics name the field without echoing its value.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ValidationError(pub String);
-impl std::fmt::Display for ValidationError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(&self.0)
+fn error(path: &str, kind: ErrorKind) -> ValidationError {
+    ValidationError::new(path, kind)
+}
+
+fn check_extensions(
+    extensions: &Map<String, Value>,
+    reserved: &[&str],
+    path: &str,
+) -> Result<(), ValidationError> {
+    for field in reserved {
+        if extensions.contains_key(*field) {
+            return Err(error(
+                &format!("{path}.{field}"),
+                ErrorKind::ExtensionCollision,
+            ));
+        }
     }
+    Ok(())
 }
-impl std::error::Error for ValidationError {}
-fn error(path: &str, rule: &str) -> ValidationError {
-    ValidationError(format!("{path}: {rule}"))
-}
+
 fn schema() -> &'static Value {
     static SCHEMA: OnceLock<Value> = OnceLock::new();
     SCHEMA
@@ -64,7 +82,9 @@ fn schema() -> &'static Value {
 /// A known typed record or an unchanged future record kind.
 #[derive(Debug, Clone, PartialEq)]
 pub enum Record {
+    /// A generated record defined by this schema.
     Known(Box<KnownRecord>),
+    /// A future kind preserved with its common envelope.
     Unknown(Map<String, Value>),
 }
 impl Record {
@@ -73,24 +93,26 @@ impl Record {
         validate_record(&value)?;
         let object = value
             .as_object()
-            .ok_or_else(|| error("record", "expected object"))?;
+            .ok_or_else(|| error("record", ErrorKind::IncorrectType))?;
         let kind = object["kind"]
             .as_str()
-            .ok_or_else(|| error("kind", "expected string"))?;
-        if schema()["$defs"].get(kind).is_none() || kind == "Endpoint" {
+            .ok_or_else(|| error("kind", ErrorKind::IncorrectType))?;
+        if !RECORD_KINDS.contains(&kind) {
             return Ok(Self::Unknown(object.clone()));
         }
         let definition = &schema()["$defs"][kind];
         normalize_integers(&mut value, definition);
         serde_json::from_value(value)
             .map(|record| Self::Known(Box::new(record)))
-            .map_err(|_| error("record", "invalid typed representation"))
+            .map_err(|_| error("record", ErrorKind::InvalidRepresentation))
     }
     /// Serialize and validate the complete wire record, including caller modifications.
     pub fn to_value(&self) -> Result<Value, ValidationError> {
         let value = match self {
             Self::Known(record) => {
-                serde_json::to_value(record).map_err(|_| error("record", "serialization failed"))?
+                record.check_extensions()?;
+                serde_json::to_value(record)
+                    .map_err(|_| error("record", ErrorKind::Serialization))?
             }
             Self::Unknown(record) => Value::Object(record.clone()),
         };
@@ -99,34 +121,53 @@ impl Record {
     }
 }
 
-/// Validate a complete record. Unknown kinds retain their common envelope fields.
+/// Validate a reader record: common envelope, known structure, and record-local semantics.
+/// Future kinds are accepted. This does not validate stream ordering or lifecycle history.
 pub fn validate_record(value: &Value) -> Result<(), ValidationError> {
     let object = value
         .as_object()
-        .ok_or_else(|| error("record", "expected object"))?;
+        .ok_or_else(|| error("record", ErrorKind::IncorrectType))?;
     let kind = object
         .get("kind")
-        .and_then(Value::as_str)
-        .ok_or_else(|| error("kind", "required string"))?;
-    if !object.get("at_ms").is_some_and(Value::is_number) {
-        return Err(error("at_ms", "required number"));
+        .ok_or_else(|| error("kind", ErrorKind::MissingField))?
+        .as_str()
+        .ok_or_else(|| error("kind", ErrorKind::IncorrectType))?;
+    let timestamp = object
+        .get("at_ms")
+        .ok_or_else(|| error("at_ms", ErrorKind::MissingField))?;
+    if !timestamp.is_number() {
+        return Err(error("at_ms", ErrorKind::IncorrectType));
     }
-    if let Some(definition) = schema()["$defs"].get(kind).filter(|_| kind != "Endpoint") {
+    if let Some(definition) = schema()["$defs"]
+        .get(kind)
+        .filter(|_| RECORD_KINDS.contains(&kind))
+    {
         check(value, definition, "record")?;
     }
     if kind == "identity_refused" {
         let start = object.get("window_start_ms").and_then(Value::as_f64);
         let end = object.get("window_end_ms").and_then(Value::as_f64);
         if matches!((start,end), (Some(a),Some(b)) if a > b) {
-            return Err(error("window_end_ms", "precedes window_start_ms"));
+            return Err(error("window_end_ms", ErrorKind::InvalidOrder));
         }
     }
     if kind == "segments_dropped" {
         let first = object.get("first_seq").and_then(integer_value);
         let last = object.get("last_seq").and_then(integer_value);
         if matches!((first,last), (Some(a),Some(b)) if a > b) {
-            return Err(error("last_seq", "precedes first_seq"));
+            return Err(error("last_seq", ErrorKind::InvalidOrder));
         }
+    }
+    Ok(())
+}
+
+/// Validate a producer record, rejecting kinds not defined by this schema.
+/// Includes the same record-local semantic checks as [`validate_record`].
+pub fn validate_producer_record(value: &Value) -> Result<(), ValidationError> {
+    validate_record(value)?;
+    let kind = value["kind"].as_str().expect("validated discriminator");
+    if !RECORD_KINDS.contains(&kind) {
+        return Err(error("kind", ErrorKind::UnknownKind));
     }
     Ok(())
 }
@@ -134,6 +175,9 @@ pub fn validate_record(value: &Value) -> Result<(), ValidationError> {
 /// Validate a projected field without requiring columns the reader did not request.
 /// Unknown fields remain available to the reader's schema-evolution policy.
 pub fn validate_field(kind: &str, field: &str, value: &Value) -> Result<(), ValidationError> {
+    if !RECORD_KINDS.contains(&kind) {
+        return Ok(());
+    }
     if let Some(definition) = schema()["$defs"][kind]["properties"].get(field) {
         check(value, definition, field)?;
     }
@@ -144,12 +188,12 @@ fn check(value: &Value, rule: &Value, path: &str) -> Result<(), ValidationError>
     if let Some(reference) = rule.get("$ref").and_then(Value::as_str) {
         let definition = schema()
             .pointer(reference.strip_prefix('#').unwrap_or(reference))
-            .ok_or_else(|| error(path, "unresolved schema reference"))?;
+            .ok_or_else(|| error(path, ErrorKind::InvalidSchema))?;
         return check(value, definition, path);
     }
     if let Some(constant) = rule.get("const") {
         if constant != value {
-            return Err(error(path, "unexpected constant"));
+            return Err(error(path, ErrorKind::UnexpectedConstant));
         }
     }
     if let Some(ty) = rule.get("type") {
@@ -168,7 +212,7 @@ fn check(value: &Value, rule: &Value, path: &str) -> Result<(), ValidationError>
                 .is_some_and(|types| types.iter().filter_map(Value::as_str).any(accepts))
         });
         if !valid {
-            return Err(error(path, "incorrect type"));
+            return Err(error(path, ErrorKind::IncorrectType));
         }
     }
     if let Some(n) = integer_value(value) {
@@ -178,17 +222,17 @@ fn check(value: &Value, rule: &Value, path: &str) -> Result<(), ValidationError>
             .is_some_and(|min| n < i128::from(min))
             || rule
                 .get("maximum")
-                .and_then(Value::as_u64)
+                .and_then(Value::as_i64)
                 .is_some_and(|max| n > i128::from(max))
         {
-            return Err(error(path, "integer outside allowed range"));
+            return Err(error(path, ErrorKind::OutOfRange));
         }
     }
     if let Some(object) = value.as_object() {
         if let Some(required) = rule.get("required").and_then(Value::as_array) {
             for field in required.iter().filter_map(Value::as_str) {
                 if !object.contains_key(field) {
-                    return Err(error(&format!("{path}.{field}"), "required field absent"));
+                    return Err(error(&format!("{path}.{field}"), ErrorKind::MissingField));
                 }
             }
         }
@@ -219,7 +263,7 @@ fn check(value: &Value, rule: &Value, path: &str) -> Result<(), ValidationError>
     }
     if let Some(negative) = rule.get("not") {
         if check(value, negative, path).is_ok() {
-            return Err(error(path, "forbidden field combination"));
+            return Err(error(path, ErrorKind::ForbiddenCombination));
         }
     }
     Ok(())
@@ -244,7 +288,11 @@ fn normalize_integers(value: &mut Value, rule: &Value) {
         }
         return;
     }
-    if rule.get("type").and_then(Value::as_str) == Some("integer") {
+    if rule["type"] == "integer"
+        || rule["type"]
+            .as_array()
+            .is_some_and(|types| types.iter().any(|ty| ty == "integer"))
+    {
         if let Some(number) = integer_value(value).and_then(|n| i64::try_from(n).ok()) {
             *value = Value::from(number);
         }
@@ -263,5 +311,32 @@ fn normalize_integers(value: &mut Value, rule: &Value) {
         for value in items {
             normalize_integers(value, definition);
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    #[test]
+    fn signed_maximum_rejects_values_above_a_negative_bound() {
+        let rule = json!({"type":"integer", "minimum":-10, "maximum":-1});
+        assert!(check(&json!(-5), &rule, "field").is_ok());
+        assert_eq!(
+            check(&json!(0), &rule, "field").unwrap_err().kind,
+            ErrorKind::OutOfRange
+        );
+    }
+
+    #[test]
+    fn nullable_integers_normalize_whole_numbers_without_changing_null() {
+        let rule = json!({"type":["integer", "null"]});
+        let mut value = json!(3.0);
+        normalize_integers(&mut value, &rule);
+        assert_eq!(value.as_i64(), Some(3));
+        let mut null = Value::Null;
+        normalize_integers(&mut null, &rule);
+        assert!(null.is_null());
     }
 }

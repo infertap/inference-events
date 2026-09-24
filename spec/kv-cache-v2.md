@@ -36,9 +36,9 @@ writes it. An engine MAY emit records natively and be the producer; an adapter o
 engine's native telemetry MAY be the producer for it. The `vllm-wire` corpus documents one such
 adapter mapping, from a real engine's native events to conforming records.
 
-**Status.** v1.7 draft. The write-ahead form is verified against a reference producer's code and
-conformance corpora (2026-08-06). §2.1's Parquet form is specified ahead of its producer, decided
-2026-08-13; its fixture is the corpus's Parquet twin of the sealed-segment fixture.
+**Status.** Wire contract 2.1. The canonical JSON Schema defines record structure;
+this specification defines record and stream semantics. The conformance corpus covers
+JSON Lines, Parquet, identity construction, delivery, lifecycle, and reader obligations.
 
 **Conventions.** Normative requirements use the key words of BCP 14 (RFC 2119, as clarified by
 RFC 8174); they are normative only in uppercase. A reference written `§4.2` is to a numbered

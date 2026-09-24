@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased
+
+- Reject extension fields that collide with reserved wire fields during serialization.
+- Add producer validation that rejects unknown event kinds.
+- Replace string-only validation errors with structured paths and error categories.
+- Generate field documentation and run the crate example as a doctest.
+- Enforce schema-generation constraints, compatibility versioning, and corpus regeneration.
+
+These changes do not alter the wire format. The validation error representation changes
+Rust source compatibility; callers should use `ValidationError.path` and `.kind`.
+
 ## Contract 2.1
 
 Add optional, pseudonymized backend identity to store and eviction records. Clarify
