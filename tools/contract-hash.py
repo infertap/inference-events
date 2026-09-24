@@ -1,25 +1,8 @@
 #!/usr/bin/env python3
-"""
-Compute the contract hash: one value that moves when, and only when, the contract moves.
+"""Compute SHA-256 over conformance file paths and bytes, excluding CONTRACT_HASH.
 
-A consumer vendors this repo at a pinned commit. If the contract changes and the consumer does
-not bump its pin, the consumer keeps testing against the old vendored corpora and passes
-cleanly — a stale pin fails on the ABSENCE of action, and CI runs on action, so nothing fires.
-That is the same shape as every other silent failure in this system.
-
-Comparing commit SHAs would fix it and immediately become noise: every unrelated commit here —
-a typo, a lint, a packaging tweak — would flag the consumer as stale, and a check that cries
-wolf gets muted inside a week. Hashing the CONTRACT instead means the value is stable across
-churn and moves exactly once per real change.
-
-Scope is `conformance/`: the corpora ARE the machine-readable contract, and this design's own
-rule is that a normative change arrives with a fixture. A prose-only change to
-`spec/kv-cache-v2.md` therefore will not move this hash — a gap worth knowing about,
-and the alternative (hashing the prose) reintroduces exactly the noise the commit-SHA approach
-had.
-
-    python3 tools/contract-hash.py            # print
-    python3 tools/contract-hash.py --write    # write conformance/CONTRACT_HASH
+Any corpus byte change updates the hash, including schema descriptions and formatting.
+Specification-only and implementation-only changes do not update it.
 """
 
 import argparse

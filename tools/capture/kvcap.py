@@ -1,19 +1,8 @@
 #!/usr/bin/env python3
-"""
-kvcap.py - capture vLLM KV-cache event frames verbatim, and report what is actually
-on the wire.
+"""Capture multipart ZMQ messages as hexadecimal frames for offline inspection.
 
-Deliberately dumb. It subscribes, writes raw multipart frames to disk as hex, and
-decodes only far enough to DESCRIBE types. It never coerces, never validates against
-an expected schema, and never discards a frame it cannot parse - an unparseable or
-unexpected frame is a finding, not an error.
-
-That is the point: the corpus this replaces was authored from schema-reading and was
-self-consistently wrong. This tool reports what arrived, not what should have.
-
-Deps: pyzmq, plus msgpack or msgspec (vLLM's env already has msgspec).
-
-  python3 kvcap.py --endpoint tcp://127.0.0.1:5557 --duration 180 --tag sha256
+The report summarizes framing and decoded batch shapes. Use kvinspect.py to inspect
+map-shaped event fields. Subscribe before sending inference requests.
 """
 
 import argparse
@@ -42,7 +31,7 @@ except ImportError:  # vLLM ships msgspec
 
 
 def describe(v):
-    """A type descriptor that answers the question we came here to ask.
+    """Describe the observed value type and collection shape.
 
     Ints report their ACTUAL bit length, so a 256-bit hash arriving as an oversized
     int is distinguishable from a 64-bit one. Bytes report their length, so a sha256
@@ -108,7 +97,7 @@ def main():
     frame_arity = Counter()
     batch_arity = Counter()
     tag_counts = Counter()
-    shapes = defaultdict(set)          # (event_tag, field_index) -> {descriptors}
+    shapes = defaultdict(set)  # (event_tag, field_index) -> {descriptors}
     batch_field_shapes = defaultdict(set)  # batch_index -> {descriptors}
     decode_errors = Counter()
     seen_signatures = set()
@@ -139,7 +128,7 @@ def main():
             err = None
             try:
                 batch = unpack(payload)
-            except Exception as e:  # a frame we cannot parse is DATA, not a crash
+            except Exception as e:  # Preserve undecodable frames for inspection.
                 err = f"{type(e).__name__}: {e}"
                 decode_errors[err[:120]] += 1
 
@@ -186,7 +175,9 @@ def main():
                 hex_stored += 1
             out.write(json.dumps(rec) + "\n")
 
-    elapsed = (last_arrival - first_arrival) if (first_arrival and last_arrival) else 0.0
+    elapsed = (
+        (last_arrival - first_arrival) if (first_arrival and last_arrival) else 0.0
+    )
     gaps = 0
     if len(seqs) > 1:
         for a, b in zip(seqs, seqs[1:]):
@@ -211,7 +202,9 @@ def main():
     w(f"publisher seq gaps {gaps}   (nonzero = the publisher outran this capture)")
     w("")
     w("-- framing ---------------------------------------------------------")
-    w(f"multipart arity   {dict(frame_arity)}   (vLLM publishes 3: topic, seq, payload)")
+    w(
+        f"multipart arity   {dict(frame_arity)}   (vLLM publishes 3: topic, seq, payload)"
+    )
     w("")
     w("-- batch envelope --------------------------------------------------")
     w(f"batch arity       {dict(batch_arity)}")
@@ -230,27 +223,6 @@ def main():
         for e, n in decode_errors.most_common():
             w(f"  x{n}  {e}")
     w("")
-    w("=" * 72)
-    w("KEY ANSWERS")
-    w("=" * 72)
-
-    bs_hash = sorted(shapes.get(("BlockStored", 1), set())) or ["<not observed>"]
-    bs_parent = sorted(shapes.get(("BlockStored", 2), set())) or ["<not observed>"]
-    bs_tokens = sorted(shapes.get(("BlockStored", 3), set())) or ["<not observed>"]
-    bs_lora = sorted(shapes.get(("BlockStored", 5), set())) or ["<not observed>"]
-    w(f"block_hashes  (BlockStored[1])  {bs_hash}")
-    w("    -> 'list[N]<bytes(32)>' = sha256 as msgpack bin. infertap's i64 model")
-    w("       cannot hold it; T0-b answered, N4 is confirmed as a type change.")
-    w("    -> 'list[N]<int(256b)>'  = oversized int instead. Different fix, same verdict.")
-    w("    -> 'list[N]<int(<=63b)>' = a 64-bit hash. Check which algo produced it.")
-    w(f"parent_hash   (BlockStored[2])  {bs_parent}")
-    w(f"token_ids     (BlockStored[3])  {bs_tokens}")
-    w("    -> anything but 'null' means prompt content transits this socket (N1).")
-    w(f"lora_id       (BlockStored[5])  {bs_lora}")
-    dp = "PRESENT" if any(k >= 3 for k in batch_arity) else "absent"
-    w(f"dp_rank       (batch[2])        {dp}  {sorted(batch_field_shapes.get(2, set()))}")
-    w("    -> PRESENT means workers share this endpoint; N2 is live and instance")
-    w("       identity must fold it in.")
     report = "\n".join(L)
 
     with open(rep_path, "w") as f:
@@ -272,7 +244,9 @@ def main():
         "batch_arity": dict(batch_arity),
         "event_counts": dict(tag_counts),
         "field_shapes": {f"{t}[{i}]": sorted(v) for (t, i), v in shapes.items()},
-        "batch_field_shapes": {str(i): sorted(v) for i, v in batch_field_shapes.items()},
+        "batch_field_shapes": {
+            str(i): sorted(v) for i, v in batch_field_shapes.items()
+        },
         "python": platform.python_version(),
         "platform": platform.platform(),
         "TODO_fill_in": {

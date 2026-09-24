@@ -1,7 +1,7 @@
 {
  "fixture_version": "v0",
  "name": "uncovered_a_discarded_recovery_declares_no_coverage",
- "note": "run-2 found a headerless file at start and discarded it, declaring the discard as the second record of its first segment (spec 4.3, since 1.11). The span that file covered was already uncovered -- it precedes run-2's start -- so the window is byte-for-byte the crash fixture's: a reader that widens or narrows it on the declaration fails here",
+ "note": "run-2 found a headerless file at start and discarded it, declaring the discard as the second record of its first segment (spec 4.3). The span that file covered was already uncovered -- it precedes run-2's start -- so the window is byte-for-byte the crash fixture's: a reader that widens or narrows it on the declaration fails here",
  "segments": [
   [
    {

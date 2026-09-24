@@ -1,18 +1,8 @@
 #!/usr/bin/env python3
-"""
-Regenerate conformance/lifecycle/records.json.
+"""Generate lifecycle records from the specified record shapes.
 
-Same rule as the wire corpus: the expected records are derived here, independently, from the
-documented record shapes -- not by running the Rust builders. Two implementations meeting is the
-only arrangement in which a passing conformance test means anything.
-
-Nothing here is captured, because lifecycle records describe the tap process rather than the
-engine: there is no wire to capture them from. What IS pinned from the capture is the timestamp
-SCALE -- wall-clock milliseconds. The previous corpus used `at_ms: 100.0`, and that is precisely
-why a 1000x unit error (engine seconds emitted under a millisecond field name) was invisible to
-every test in both repos.
-
-    python3 tools/gen-lifecycle-corpus.py
+Timestamps use epoch milliseconds to expose unit conversion errors. Expectations are
+computed independently of producer code.
 """
 
 import hashlib
@@ -41,8 +31,7 @@ def base(kind, at_ms):
 
 
 def with_stats(rec, s):
-    """The envelope stats block, in the order lifecycle.rs writes it. Optionals follow the
-    house rule: absent, not null."""
+    """Build envelope statistics. Omit optional fields without values."""
     rec["msgs_seen"] = s["msgs_seen"]
     rec["dropped"] = s["dropped"]
     rec["oversized"] = s["oversized"]
@@ -86,14 +75,17 @@ CANARY_CONTEXT = b"infertap:canary:v1"
 
 def canary(epoch):
     key, nonce = TEST_KEY[:32], TEST_KEY[32:]
-    msg = CANARY_CONTEXT + b"\x00" + epoch.to_bytes(4, "big") + b"\x00" + nonce.hex().encode()
+    msg = (
+        CANARY_CONTEXT
+        + b"\x00"
+        + epoch.to_bytes(4, "big")
+        + b"\x00"
+        + nonce.hex().encode()
+    )
     return hmac.new(key, msg, hashlib.sha256).hexdigest()[:32]
 
 
-# **The producer's configuration, which is not the same thing as what it emits.** Since contract
-# 1.5 a producer is configured with a key epoch and declares it on the segment header, not on
-# `agent_start` — so the two differ, and `NOT_ON_START` is what separates them. They were one dict
-# spread straight into the record, which made a config-only field unrepresentable.
+# Key epochs belong to segment headers, not agent_start records.
 START_CONFIG = {
     "key_epoch": 3,
     "endpoint_count": 2,
@@ -215,8 +207,7 @@ def main():
             "stop case omits noraw_scanned and rss_bytes, and one heartbeat endpoint omits "
             "last_msg_at_ms (nothing seen yet). Lifecycle records carry no instance_id "
             "(agent-scoped) and no block ids (the pseudonymizer leaves them unmapped). "
-            "Timestamps are at real wall-clock scale on purpose -- the previous corpus used "
-            "at_ms: 100.0, which is why a seconds-vs-milliseconds error stayed invisible. "
+            "Timestamps use epoch milliseconds to expose unit conversion errors. "
             "capacity_cases pins the identity_refused signal separately: instance-scoped by "
             "design (it declares a loss for one observed holder), with engine-clock window "
             "fields beside a producer-clock at_ms, named apart."
@@ -224,7 +215,12 @@ def main():
         "provenance": PROVENANCE,
         "agent_version": AGENT_VERSION,
         "cases": [
-            {"kind": "agent_start", "at_ms": T0, "config": START_CONFIG, "expect": start},
+            {
+                "kind": "agent_start",
+                "at_ms": T0,
+                "config": START_CONFIG,
+                "expect": start,
+            },
             {
                 "kind": "heartbeat",
                 "at_ms": T0 + 60000.0,

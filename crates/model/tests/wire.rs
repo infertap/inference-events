@@ -150,3 +150,73 @@ fn backend_identity_round_trip() {
         assert!(Record::decode(value).is_err());
     }
 }
+
+#[test]
+fn extension_collisions_fail_before_serialization() {
+    use inference_events::{ErrorKind, KnownRecord};
+    for name in ["kind", "block_id", "n_tokens", "backend_id"] {
+        let mut record = Record::decode(store()).unwrap();
+        let Record::Known(known) = &mut record else {
+            panic!("expected known record");
+        };
+        let KnownRecord::Store(value) = known.as_mut() else {
+            panic!("expected store");
+        };
+        value.extensions.insert(name.into(), json!("replacement"));
+        assert!(serde_json::to_value(&*value).is_err());
+        let error = record.to_value().unwrap_err();
+        assert_eq!(error.kind, ErrorKind::ExtensionCollision);
+        assert!(error.path.ends_with(name));
+        assert!(!error.to_string().contains("replacement"));
+    }
+}
+
+#[test]
+fn nested_extension_collisions_fail_before_serialization() {
+    use inference_events::{ErrorKind, KnownRecord};
+    let value = json!({
+        "kind":"heartbeat", "at_ms":1, "msgs_seen":0, "dropped":0,
+        "oversized":0, "unknown_types":0, "events_ingested":0,
+        "content_unresolved":0, "content_bridge_entries":0,
+        "content_bridge_evicted":0, "publisher_restarts":0,
+        "endpoints":[{"source":"engine", "endpoint":"tcp://engine:5557",
+                      "msgs_seen":0, "dropped":0}]
+    });
+    let mut record = Record::decode(value).unwrap();
+    let Record::Known(known) = &mut record else {
+        panic!("expected known record")
+    };
+    let KnownRecord::Heartbeat(heartbeat) = known.as_mut() else {
+        panic!("expected heartbeat")
+    };
+    heartbeat.endpoints[0]
+        .extensions
+        .insert("source".into(), json!("replacement"));
+    assert!(serde_json::to_value(&*heartbeat).is_err());
+    let error = record.to_value().unwrap_err();
+    assert_eq!(error.kind, ErrorKind::ExtensionCollision);
+    assert_eq!(error.path, "record.endpoints[0].source");
+}
+
+#[test]
+fn producer_validation_rejects_unknown_kinds_but_readers_preserve_them() {
+    use inference_events::{validate_producer_record, ErrorKind};
+    let future = json!({"kind":"future_event", "at_ms":1, "payload":{"kind":"nested"}});
+    assert!(Record::decode(future.clone()).is_ok());
+    assert_eq!(
+        validate_producer_record(&future).unwrap_err().kind,
+        ErrorKind::UnknownKind
+    );
+    assert!(validate_producer_record(&store()).is_ok());
+}
+
+#[test]
+fn validation_errors_distinguish_missing_fields_and_incorrect_types() {
+    use inference_events::ErrorKind;
+    let missing = Record::decode(json!({"kind":"store"})).unwrap_err();
+    let wrong = Record::decode(json!({"kind":"store", "at_ms":"private-input"})).unwrap_err();
+    assert_eq!(missing.kind, ErrorKind::MissingField);
+    assert_eq!(wrong.kind, ErrorKind::IncorrectType);
+    assert_eq!(missing.path, wrong.path);
+    assert!(!wrong.to_string().contains("private-input"));
+}

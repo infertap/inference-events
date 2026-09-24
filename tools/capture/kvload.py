@@ -32,7 +32,7 @@ WORDS = (
 
 
 def make_prefix(rng, approx_tokens):
-    # ~0.75 words per token is close enough; we only need length, not meaning.
+    # Approximate token length with 0.75 words per token.
     n = int(approx_tokens * 0.75)
     return " ".join(rng.choice(WORDS) for _ in range(n))
 
@@ -99,7 +99,9 @@ def main():
                 print(f"[kvload] request error: {e}", file=sys.stderr)
             if n % 50 == 0:
                 el = time.time() - started
-                print(f"[kvload] {n}/{args.requests}  {n/el:.1f} req/s", file=sys.stderr)
+                print(
+                    f"[kvload] {n}/{args.requests}  {n/el:.1f} req/s", file=sys.stderr
+                )
 
     threads = [
         threading.Thread(target=worker, args=(i,), daemon=True)

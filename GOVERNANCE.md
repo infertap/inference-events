@@ -1,33 +1,31 @@
-# Governance
+# Contract governance
 
-Four rules, each load-bearing.
+## Requirements and conformance
 
-**1. A requirement enters with its fixture.** A normative requirement enters a specification
-together with the conformance fixture (or, for producer-side behavior a fixture cannot
-express, the named test) that would fail an implementation violating it. A requirement
-without one enters the spec's "requirements with no covering fixture" table instead, and a
-non-empty table gates any release claiming conformance. The table is empty today; keeping it
-empty is the point.
+Submit normative requirements with a fixture that rejects a violating implementation.
+For producer behavior a fixture cannot express, identify the covering test. Record any
+uncovered requirement in the specification's conformance table. A release claiming
+conformance must have no uncovered requirements.
 
-**2. Fixtures change only here, with the text that motivates them.** A corpus change lands in
-the same commit as the spec change it expresses, and `CONTRACT_HASH` is re-blessed in that
-commit (`python3 tools/contract-hash.py --write`). Consumers vendor this repository at a
-pinned commit and verify the hash offline. An implementation that fails conformance is fixed
-by changing the implementation, or by landing a change here and bumping the pin. Editing
-vendored fixtures is not a fix.
+## Corpus changes
 
-**3. Versioning follows the spec's own law.** Additive changes (new record kinds, new
-optional fields) increment the minor version. Anything else, including any change in the
-meaning of an existing field, increments the major version, and a meaning change is never
-made without one. Producer version skew is steady state; readers follow the mixed-fleet law.
+Change corpus expectations in this repository with the specification change that motivates
+them. Consumers pin and verify the corpus; they must not edit vendored expectations to
+make an implementation pass. Derive expectations from the specification independently
+of the implementation under test.
 
-**4. Generators derive from the text, never from an implementation.** Every fixture's
-expectation is computed by the generators in `tools/` from the specification's normative
-semantics. A fixture that mirrors an implementation's bug is itself a defect, whatever the
-implementation.
+Documentation-only edits may update fixture descriptions without changing inputs or
+expected results. Regenerate affected artifacts and update `CONTRACT_HASH` in the same
+commit. The hash covers corpus bytes, including documentation.
 
-## Proposing a change
+## Versioning
 
-Open a pull request containing the spec text, the covering fixture, and the re-blessed hash,
-in one commit. A proposal that cannot state its fixture is not ready; rule 1 says where it
-waits.
+New record kinds and optional fields require a wire minor increase. Changes to existing
+meaning or requirements require a wire major increase. Review Rust package compatibility
+separately. Readers must handle producer version skew as specified by the mixed-fleet rules.
+
+## Review
+
+Submit changes through a pull request with the relevant specification, fixtures, tests,
+and contract hash together. See [CONTRIBUTING.md](CONTRIBUTING.md) for validation and
+release procedures.

@@ -1,21 +1,8 @@
 #!/usr/bin/env python3
-"""Every field a fixture emits is a field the schema names for that kind.
+"""Check fixture fields against the generated column catalog.
 
-Three specification changes in one day landed in one generator and not another, and each was
-caught downstream by an implementation whose test compared its output against a fixture. The
-contract was internally inconsistent and only a consumer noticed. This is the check that belongs
-here.
-
-It reads `conformance/schema/records.json`, derived from the specification's tables, and walks
-every fixture. A field an implementation would refuse is a field this repository refuses first.
-
-**Containers are enumerated, never sniffed.** A heuristic that calls an object a record because
-it carries `kind` and `at_ms` also calls a lifecycle CASE a record, because a case carries both.
-Guessing the shape is the same class of mistake as guessing a field's type, so a fixture family
-this does not recognise is an error rather than a skip.
-
-Direction is deliberate: a fixture may omit an optional field, so absence is silent. Emitting a
-field no kind names is the error.
+Each fixture family declares its record containers. Unknown families fail validation.
+Optional fields may be absent. Provenance fields are resolved within each segment.
 """
 
 import json
@@ -42,7 +29,16 @@ def segments_of(rel, doc):
     if family == "reader":
         return [(seg[0] if seg else None, seg) for seg in doc["segments"]]
     if family in ("lifecycle", "delivery"):
-        out = [(None, [c["expect"] for c in doc.get("cases", []) if isinstance(c.get("expect"), dict)])]
+        out = [
+            (
+                None,
+                [
+                    c["expect"]
+                    for c in doc.get("cases", [])
+                    if isinstance(c.get("expect"), dict)
+                ],
+            )
+        ]
         for key in ("segment", "recovering_segment"):
             lines = list(doc.get(key, {}).get("lines", []))
             if lines:
@@ -50,7 +46,9 @@ def segments_of(rel, doc):
         return out
     if family in ("vllm-wire", "pseudonym", "structure", "content"):
         return []  # wire input and key vectors: not record streams
-    raise SystemExit(f"{rel}: fixture family {family!r} has no known shape; teach this check")
+    raise SystemExit(
+        f"{rel}: fixture family {family!r} has no known shape; teach this check"
+    )
 
 
 def named_fields(kind):
@@ -73,7 +71,10 @@ def main():
             # set of keys the records behind that header may legally carry -- under 1.1, where a
             # producer stamped provenance on every record. From 1.2 a producer MUST NOT.
             version, prov = "1.1", set(declared)
-            if header is not None and header.get("kind") in ("segment_open", "segment_recovered"):
+            if header is not None and header.get("kind") in (
+                "segment_open",
+                "segment_recovered",
+            ):
                 hfields = named_fields(header["kind"]) or set()
                 prov |= {k for k in header if k.split(".")[0] not in hfields}
                 version = str(header.get("contract_version", "1.1"))
