@@ -34,7 +34,12 @@ without any change here, and must be able to reclassify stored facts when it doe
 **Who the producer is.** Conformance is a property of the record stream, not of the process that
 writes it. An engine MAY emit records natively and be the producer; an adapter observing an
 engine's native telemetry MAY be the producer for it. The `vllm-wire` corpus documents one such
-adapter mapping, from a real engine's native events to conforming records.
+adapter mapping, from a real engine's native events to conforming records. The `sglang-wire`
+corpus documents a second, from SGLang's native events, which share vLLM's wire format and
+differ in three fields: the cache salt arrives once per event and enters the identity chain on
+the first block of a rooted run, where vLLM carries it (§3.1); `lora_id` arrives without a
+name; and the tier vocabulary is the engine's own. SGLang's radix cache announces no reuse as a
+store, so its producer declares `reuse_reporting: "none"` (§2.3).
 
 **Status.** Wire contract 2.1. The canonical JSON Schema defines record structure;
 this specification defines record and stream semantics. The conformance corpus covers

@@ -1,0 +1,48 @@
+{
+  "tag": "main",
+  "note": "sglang v0.5.20 A40 page16 maxtok4096",
+  "endpoint": "tcp://127.0.0.1:5557",
+  "decoder": "msgpack",
+  "captured_at_unix": 1790696108.7450254,
+  "captured_at_iso": "2026-09-29T15:35:08Z",
+  "messages": 153,
+  "payload_bytes": 411735,
+  "observed_span_s": 212.6373872756958,
+  "seq_gaps": 0,
+  "frame_arity": {
+    "3": 153
+  },
+  "batch_arity": {
+    "3": 153
+  },
+  "event_counts": {},
+  "field_shapes": {},
+  "batch_field_shapes": {
+    "0": [
+      "float"
+    ],
+    "1": [
+      "list[1]<map[1]>",
+      "list[1]<map[7]>",
+      "list[1]<map[8]>",
+      "list[2]<map[3]>",
+      "list[2]<map[7]>",
+      "list[3]<map[3]>",
+      "list[3]<map[7]>",
+      "list[4]<map[7]>"
+    ],
+    "2": [
+      "int(0b)"
+    ]
+  },
+  "python": "3.12.3",
+  "platform": "Linux-6.8.0-65-generic-x86_64-with-glibc2.39",
+  "engine": {
+    "sglang": "0.5.20",
+    "msgspec": "0.21.1",
+    "pyzmq": "27.2.0",
+    "engine_args": "python3 -m sglang.launch_server --model-path Qwen/Qwen2.5-0.5B-Instruct --host 127.0.0.1 --port 8000 --page-size 16 --max-total-tokens 4096 --kv-events-config {\"publisher\":\"zmq\",\"endpoint\":\"tcp://*:5557\",\"replay_endpoint\":\"tcp://*:5657\"}",
+    "page_size": 16,
+    "gpu": "NVIDIA A40"
+  }
+}

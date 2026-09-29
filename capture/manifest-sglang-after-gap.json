@@ -1,0 +1,41 @@
+{
+  "tag": "after-gap",
+  "note": "resubscribed after a gap",
+  "endpoint": "tcp://127.0.0.1:5557",
+  "decoder": "msgpack",
+  "captured_at_unix": 1790697015.1383555,
+  "captured_at_iso": "2026-09-29T15:50:15Z",
+  "messages": 2,
+  "payload_bytes": 508,
+  "observed_span_s": 0.009053468704223633,
+  "seq_gaps": 0,
+  "frame_arity": {
+    "3": 2
+  },
+  "batch_arity": {
+    "3": 2
+  },
+  "event_counts": {},
+  "field_shapes": {},
+  "batch_field_shapes": {
+    "0": [
+      "float"
+    ],
+    "1": [
+      "list[1]<map[7]>"
+    ],
+    "2": [
+      "int(0b)"
+    ]
+  },
+  "python": "3.12.3",
+  "platform": "Linux-6.8.0-65-generic-x86_64-with-glibc2.39",
+  "engine": {
+    "sglang": "0.5.20",
+    "msgspec": "0.21.1",
+    "pyzmq": "27.2.0",
+    "engine_args": "the main run's server, resubscribed after a gap",
+    "page_size": 16,
+    "gpu": "NVIDIA A40"
+  }
+}

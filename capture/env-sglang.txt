@@ -1,0 +1,7 @@
+sglang                                   0.5.20
+msgspec                                  0.21.1
+pyzmq                                    27.2.0
+torch                                    2.13.0+cu130
+python 3.12.3
+NVIDIA A40, 570.211.01
+image lmsysorg/sglang:v0.5.20

@@ -65,14 +65,19 @@ def main():
             subprocess.run(
                 [sys.executable, f"tools/gen-{name}.py"], cwd=root, check=True
             )
-        manifest = json.loads(
-            (ROOT / "conformance/vllm-wire/manifest.json").read_text()
-        )
-        subprocess.run(
-            [sys.executable, "tools/gen-vllm-wire-corpus.py", *manifest["captures"]],
-            cwd=root,
-            check=True,
-        )
+        for corpus in ("vllm-wire", "sglang-wire"):
+            manifest = json.loads(
+                (ROOT / f"conformance/{corpus}/manifest.json").read_text()
+            )
+            subprocess.run(
+                [
+                    sys.executable,
+                    f"tools/gen-{corpus}-corpus.py",
+                    *manifest["captures"],
+                ],
+                cwd=root,
+                check=True,
+            )
         before, after = snapshot(ROOT), snapshot(root)
         changed = [
             str(path)
