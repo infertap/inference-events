@@ -1,0 +1,44 @@
+messages decoded: 153   events: 298
+
+======================================================================
+map{block_hashes,block_size,lora_id,medium,parent_block_hash,token_ids,type}
+  count: 225
+    block_hashes             ['list[1]<int(59b)>', 'list[1]<int(60b)>', 'list[1]<int(61b)>', 'list[1]<int(62b)>', 'list[1]<int(63b)>', 'list[2]<int(62b)>', 'list[31]<int(63b)>', 'list[44]<int(62b)>', 'list[44]<int(63b)>', 'list[45]<int(61b)>', 'list[45]<int(62b)>', 'list[45]<int(63b)>', 'list[46]<int(61b)>', 'list[46]<int(63b)>', 'list[47]<int(59b)>', 'list[47]<int(60b)>', 'list[47]<int(63b)>', 'list[68]<int(62b)>', 'list[6]<int(62b)>']
+    block_size               ['int(5b)']
+    lora_id                  ['null']
+    medium                   ['str']
+    parent_block_hash        ['int(57b)', 'int(58b)', 'int(59b)', 'int(60b)', 'int(61b)', 'int(62b)', 'int(63b)', 'null']
+    token_ids                ['list[1088]<int(13b)>', 'list[16]<int(10b)>', 'list[16]<int(11b)>', 'list[16]<int(13b)>', 'list[16]<int(14b)>', 'list[16]<int(15b)>', 'list[16]<int(17b)>', 'list[16]<int(4b)>', 'list[16]<int(5b)>', 'list[16]<int(6b)>', 'list[16]<int(8b)>', 'list[16]<int(9b)>', 'list[32]<int(16b)>', 'list[496]<int(17b)>', 'list[704]<int(14b)>', 'list[704]<int(16b)>', 'list[720]<int(11b)>', 'list[720]<int(14b)>', 'list[720]<int(15b)>', 'list[720]<int(16b)>', 'list[720]<int(9b)>', 'list[736]<int(11b)>', 'list[736]<int(13b)>', 'list[736]<int(14b)>', 'list[736]<int(7b)>', 'list[736]<int(9b)>', 'list[752]<int(13b)>', 'list[752]<int(14b)>', 'list[752]<int(7b)>', 'list[752]<int(9b)>', 'list[96]<int(14b)>']
+    type                     ['str']
+    SAMPLE: {"type": "BlockStored", "block_hashes": [3681657512418864533, -4455351346579129975, -1796311452574845123, 4648175067239322905, "...+64"], "parent_block_hash": null, "token_ids": [7141, 1411, 27217, 1161, "...+1084"], "block_size": 16, "lora_id": null, "medium": "GPU"}
+    SAMPLE: {"type": "BlockStored", "block_hashes": [8682433051877271600, -8100956089879565125, 7028063911263865697, 5168230069967169210, "...+27"], "parent_block_hash": 2420527585247488459, "token_ids": [97669, 84223, 281, 18321, "...+492"], "block_size": 16, "lora_id": null, "medium": "GPU"}
+
+======================================================================
+map{block_hashes,medium,type}
+  count: 70
+    block_hashes             ['list[102]<int(62b)>', 'list[140]<int(62b)>', 'list[140]<int(63b)>', 'list[45]<int(61b)>', 'list[45]<int(62b)>', 'list[45]<int(63b)>', 'list[46]<int(63b)>', 'list[47]<int(61b)>', 'list[47]<int(62b)>', 'list[47]<int(63b)>', 'list[48]<int(63b)>', 'list[49]<int(62b)>', 'list[50]<int(62b)>', 'list[50]<int(63b)>', 'list[81]<int(62b)>', 'list[90]<int(63b)>', 'list[91]<int(61b)>', 'list[91]<int(63b)>', 'list[92]<int(59b)>', 'list[92]<int(60b)>', 'list[92]<int(61b)>', 'list[92]<int(62b)>', 'list[92]<int(63b)>', 'list[93]<int(59b)>', 'list[93]<int(60b)>', 'list[93]<int(61b)>', 'list[93]<int(62b)>', 'list[93]<int(63b)>', 'list[94]<int(59b)>', 'list[94]<int(61b)>', 'list[94]<int(62b)>', 'list[94]<int(63b)>', 'list[95]<int(60b)>', 'list[95]<int(63b)>', 'list[96]<int(62b)>', 'list[99]<int(63b)>']
+    medium                   ['str']
+    type                     ['str']
+    SAMPLE: {"type": "BlockRemoved", "block_hashes": [8682433051877271600, -8100956089879565125, 7028063911263865697, 5168230069967169210, "...+95"], "medium": "GPU"}
+    SAMPLE: {"type": "BlockRemoved", "block_hashes": [-3342234476867876454, 4820936643245657851, -7457899623351868461, -414848204571471403, "...+98"], "medium": "GPU"}
+
+======================================================================
+map{block_hashes,block_size,cache_salt,lora_id,medium,parent_block_hash,token_ids,type}
+  count: 2
+    block_hashes             ['list[68]<int(62b)>']
+    block_size               ['int(5b)']
+    cache_salt               ['str']
+    lora_id                  ['null']
+    medium                   ['str']
+    parent_block_hash        ['null']
+    token_ids                ['list[1088]<int(13b)>']
+    type                     ['str']
+    SAMPLE: {"type": "BlockStored", "block_hashes": [3090203277977390409, -2678250639109437397, -6517498608126409506, -9062029282207108022, "...+64"], "parent_block_hash": null, "token_ids": [7141, 1411, 27217, 1161, "...+1084"], "block_size": 16, "lora_id": null, "medium": "GPU", "cache_salt": "tenant-AAAA"}
+    SAMPLE: {"type": "BlockStored", "block_hashes": [-3342234476867876454, 4820936643245657851, -7457899623351868461, -414848204571471403, "...+64"], "parent_block_hash": null, "token_ids": [7141, 1411, 27217, 1161, "...+1084"], "block_size": 16, "lora_id": null, "medium": "GPU", "cache_salt": "tenant-BBBB"}
+
+======================================================================
+map{type}
+  count: 1
+    type                     ['str']
+    SAMPLE: {"type": "AllBlocksCleared"}
+

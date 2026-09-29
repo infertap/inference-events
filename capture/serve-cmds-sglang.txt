@@ -1,0 +1,32 @@
+sglang 0.5.20 (image lmsysorg/sglang:v0.5.20), msgspec 0.21.1, pyzmq 27.2.0, py3.12.3, torch 2.13.0+cu130,
+NVIDIA A40 (48 GB) 570.211.01, RunPod secure cloud EU-SE-1, 2026-09-29
+model: Qwen/Qwen2.5-0.5B-Instruct
+
+run main (tag=main):
+  python3 -m sglang.launch_server --model-path Qwen/Qwen2.5-0.5B-Instruct --host 127.0.0.1 --port 8000
+    --page-size 16 --max-total-tokens 4096
+    --kv-events-config '{"publisher":"zmq","endpoint":"tcp://*:5557","replay_endpoint":"tcp://*:5657"}'
+  subscriber first (kvcap.py, hex for every message), then, in order:
+    reuse   one 1088-token prompt three times
+    split   a prompt sharing the first half of that prompt, then diverging
+    salt    the same prompt under cache_salt tenant-AAAA (twice), tenant-BBBB, and no salt
+    load    kvload.py: 24 prefixes of ~600 tokens, 150 requests, 4 concurrent, against 4096 total tokens
+    flush   POST /flush_cache, then one fresh prompt
+run after-gap (tag=after-gap): two prompts with no subscriber attached, then a fresh subscriber and one prompt
+replay: replay.py drains tcp://127.0.0.1:5657 from the last seq the main capture saw, and from 0
+run hicache (tag=hicache): the main flags plus --enable-hierarchical-cache --hicache-ratio 2 --hicache-write-policy write_through;
+  reuse probe, kvload.py as above, one fresh prompt
+KVEventsConfig defaults: buffer_steps=10000 hwm=100000 max_queue_size=100000 topic=''
+
+FINDINGS:
+- three ZMQ frames [topic, 8-byte big-endian seq, msgpack]; the batch is [ts, events, attn_dp_rank]; events are maps with "type"
+- a repeated prefix produces no second BlockStored: the radix cache records a store only when it creates a node
+- a node split records nothing; the diverging tail arrives as one BlockStored whose parent is a page of the split node
+- cache_salt rides the event, once, as a string; a salted request stores its whole prefix again under its own namespace
+- BlockStored carries block_hashes, parent_block_hash, token_ids, block_size, lora_id (null), medium, and cache_salt where set;
+  session_id is omitted when unset (msgspec omit_defaults)
+- BlockRemoved carries block_hashes and medium; AllBlocksCleared carries nothing
+- block_size is the page's own token count: a request's final partial page is its own event
+- /flush_cache emits one AllBlocksCleared in the batch of the next scheduler step
+- the replay ROUTER answers (seq, payload) pairs from the requested seq and ends with the END_SEQ marker
+- single A40: tensor parallelism 1, one rank; attn_dp_rank is always 0

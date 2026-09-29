@@ -44,7 +44,7 @@ def segments_of(rel, doc):
             if lines:
                 out.append((lines[0], lines))
         return out
-    if family in ("vllm-wire", "pseudonym", "structure", "content"):
+    if family in ("vllm-wire", "sglang-wire", "pseudonym", "structure", "content"):
         return []  # wire input and key vectors: not record streams
     raise SystemExit(
         f"{rel}: fixture family {family!r} has no known shape; teach this check"

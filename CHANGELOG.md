@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Add the `sglang-wire` corpus: SGLang 0.5.20's native events in vLLM's wire format, with the
+  event-level cache salt, `lora_id` without a name, the `CPU_PINNED`, `DISK` and `EXTERNAL`
+  tiers, a captured `AllBlocksCleared`, and the same malformed mutations as `vllm-wire`. The
+  "Who the producer is" paragraph names the second corpus. Wire input only; no record kind or
+  field changes.
+
 - Reject extension fields that collide with reserved wire fields during serialization.
 - Add producer validation that rejects unknown event kinds.
 - Replace string-only validation errors with structured paths and error categories.
