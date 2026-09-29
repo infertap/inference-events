@@ -569,6 +569,40 @@
      "presence": "optional"
     }
    }
+  },
+  "tag_interval": {
+   "section": "2.8",
+   "fields": {
+    "kind": {
+     "type": "utf8",
+     "presence": "required",
+     "const": "tag_interval"
+    },
+    "at_ms": {
+     "type": "float64",
+     "presence": "required"
+    },
+    "declaration_id": {
+     "type": "utf8",
+     "presence": "required"
+    },
+    "identity": {
+     "type": "utf8",
+     "presence": "required"
+    },
+    "tag": {
+     "type": "utf8",
+     "presence": "required"
+    },
+    "from_ms": {
+     "type": "float64",
+     "presence": "required"
+    },
+    "until_ms": {
+     "type": "float64",
+     "presence": "optional"
+    }
+   }
   }
  }
 }

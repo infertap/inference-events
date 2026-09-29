@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- Contract 2.2: add the `tag_interval` declared record (§2.8). A declarer, a producer of its
+  own, states that an identity carried an opaque label over an interval, in its own sealed
+  segments. A later statement with the same `declaration_id` replaces the interval; an absent
+  `until_ms` means open. Readers take the latest statement, group by the label byte for byte
+  without interpreting it, and attribute a store only when its skew-widened instant lies
+  wholly inside the interval, counting edge stores as ambiguous. Four reader fixtures
+  (`reader/tag_*`) and a `tag_slices` verdict family pin it. Additive: a 2.1 reader counts
+  and skips the new kind (§6.2).
+
 - Add the `sglang-wire` corpus: SGLang 0.5.20's native events in vLLM's wire format, with the
   event-level cache salt, `lora_id` without a name, the `CPU_PINNED`, `DISK` and `EXTERNAL`
   tiers, a captured `AllBlocksCleared`, and the same malformed mutations as `vllm-wire`. The

@@ -36,6 +36,9 @@
     },
     {
       "$ref": "#/$defs/store"
+    },
+    {
+      "$ref": "#/$defs/tag_interval"
     }
   ],
   "$defs": {
@@ -1135,8 +1138,66 @@
           }
         }
       ]
+    },
+    "tag_interval": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "x-column-type": "utf8",
+          "x-presence": "required",
+          "const": "tag_interval",
+          "description": "Record discriminator: `tag_interval`."
+        },
+        "at_ms": {
+          "type": "number",
+          "x-column-type": "float64",
+          "x-presence": "required",
+          "description": "Producer clock: when the declarer wrote this statement."
+        },
+        "declaration_id": {
+          "type": "string",
+          "x-column-type": "utf8",
+          "x-presence": "required",
+          "description": "The declaration this record states. A later record with the same id replaces the interval (\u00a72.8)."
+        },
+        "identity": {
+          "type": "string",
+          "x-column-type": "utf8",
+          "x-presence": "required",
+          "description": "The portable identity the tag is on (\u00a73.1)."
+        },
+        "tag": {
+          "type": "string",
+          "x-column-type": "utf8",
+          "x-presence": "required",
+          "description": "An opaque label. A reader groups by it and never interprets it (\u00a72.8)."
+        },
+        "from_ms": {
+          "type": "number",
+          "x-column-type": "float64",
+          "x-presence": "required",
+          "description": "**producer clock**: when the identity began carrying the tag."
+        },
+        "until_ms": {
+          "type": "number",
+          "x-column-type": "float64",
+          "x-presence": "optional",
+          "description": "**producer clock**: when the identity stopped carrying the tag. Absent while the interval is open."
+        }
+      },
+      "required": [
+        "kind",
+        "at_ms",
+        "declaration_id",
+        "identity",
+        "tag",
+        "from_ms"
+      ],
+      "additionalProperties": true,
+      "x-section": "2.8"
     }
   },
-  "x-contract-version": "2.1",
+  "x-contract-version": "2.2",
   "x-content-construction": "sha256-chain-128-v2"
 }

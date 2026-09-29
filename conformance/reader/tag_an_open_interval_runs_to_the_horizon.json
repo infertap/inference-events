@@ -1,0 +1,82 @@
+{
+ "fixture_version": "v0",
+ "name": "tag_an_open_interval_runs_to_the_horizon",
+ "note": "a declaration with no end: the identity carries the label now, and a store an hour after the interval opened is attributed to it (spec 2.8)",
+ "segments": [
+  [
+   {
+    "kind": "segment_open",
+    "at_ms": 1785153669000.0,
+    "contract_version": "2.2",
+    "incarnation": "1785153600000-900",
+    "segment_seq": 0,
+    "heartbeat_secs": 60,
+    "max_segment_secs": 300
+   },
+   {
+    "kind": "tag_interval",
+    "at_ms": 1785153670000.0,
+    "declaration_id": "a-2",
+    "identity": "cS",
+    "tag": "rule-3.applied",
+    "from_ms": 1785153670000.0
+   }
+  ],
+  [
+   {
+    "kind": "segment_open",
+    "at_ms": 1785153669000.0,
+    "contract_version": "1.11",
+    "incarnation": "1785153600000-100",
+    "segment_seq": 0,
+    "heartbeat_secs": 60,
+    "max_segment_secs": 300
+   },
+   {
+    "kind": "store",
+    "instance_id": "i0",
+    "block_id": "bA",
+    "n_tokens": 16,
+    "tier": "GPU",
+    "dp_rank": 0,
+    "group_idx": 0,
+    "at_ms": 1785157270000.0,
+    "content_id": "cS"
+   },
+   {
+    "kind": "agent_stop",
+    "reason": "duration",
+    "at_ms": 1785160870000.0,
+    "msgs_seen": 1,
+    "dropped": 0,
+    "oversized": 0,
+    "unknown_types": 0,
+    "events_ingested": 1,
+    "content_unresolved": 0,
+    "content_bridge_entries": 0,
+    "content_bridge_evicted": 0,
+    "publisher_restarts": 0,
+    "endpoints": [
+     {
+      "source": "i0",
+      "endpoint": "tcp://i0:5557",
+      "msgs_seen": 1,
+      "dropped": 0,
+      "last_msg_at_ms": 1785160870000.0
+     }
+    ]
+   }
+  ]
+ ],
+ "expect": {
+  "tag_slices": {
+   "slices": {
+    "rule-3.applied": {
+     "stores": 1,
+     "tokens": 16
+    }
+   },
+   "ambiguous": {}
+  }
+ }
+}

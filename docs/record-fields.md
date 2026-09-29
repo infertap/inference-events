@@ -184,3 +184,15 @@ Generated from `schema/records.schema.json`. See the specification for stream se
 | `seq` | `integer` | optional | Transport sequence of the message that carried this event. |
 | `epoch` | `integer` | optional | Pseudonymization key epoch. |
 | `backend_id` | `string` | optional | Optional engine-emitted backend identity, scoped to publisher incarnation, rank, group and tier. Pseudonymized at egress. |
+
+## tag_interval
+
+| Field | JSON type | Presence | Description |
+|---|---|---|---|
+| `kind` | `string` | required | Record discriminator: `tag_interval`. |
+| `at_ms` | `number` | required | Producer clock: when the declarer wrote this statement. |
+| `declaration_id` | `string` | required | The declaration this record states. A later record with the same id replaces the interval (§2.8). |
+| `identity` | `string` | required | The portable identity the tag is on (§3.1). |
+| `tag` | `string` | required | An opaque label. A reader groups by it and never interprets it (§2.8). |
+| `from_ms` | `number` | required | **producer clock**: when the identity began carrying the tag. |
+| `until_ms` | `number` | optional | **producer clock**: when the identity stopped carrying the tag. Absent while the interval is open. |

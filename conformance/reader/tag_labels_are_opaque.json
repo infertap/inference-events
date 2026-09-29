@@ -1,0 +1,84 @@
+{
+ "fixture_version": "v0",
+ "name": "tag_labels_are_opaque",
+ "note": "two declarations on two identities whose labels differ only in case: a reader groups by the label byte for byte and never interprets it, so they are two slices of one store each, never one slice of two (spec 2.8)",
+ "segments": [
+  [
+   {
+    "kind": "segment_open",
+    "at_ms": 1785153669000.0,
+    "contract_version": "2.2",
+    "incarnation": "1785153600000-900",
+    "segment_seq": 0,
+    "heartbeat_secs": 60,
+    "max_segment_secs": 300
+   },
+   {
+    "kind": "tag_interval",
+    "at_ms": 1785153670000.0,
+    "declaration_id": "a-3",
+    "identity": "cS",
+    "tag": "Rule-3",
+    "from_ms": 1785153670000.0,
+    "until_ms": 1785155470000.0
+   },
+   {
+    "kind": "tag_interval",
+    "at_ms": 1785153670000.0,
+    "declaration_id": "a-4",
+    "identity": "cT",
+    "tag": "rule-3",
+    "from_ms": 1785153670000.0,
+    "until_ms": 1785155470000.0
+   }
+  ],
+  [
+   {
+    "kind": "segment_open",
+    "at_ms": 1785153669000.0,
+    "contract_version": "1.11",
+    "incarnation": "1785153600000-100",
+    "segment_seq": 0,
+    "heartbeat_secs": 60,
+    "max_segment_secs": 300
+   },
+   {
+    "kind": "store",
+    "instance_id": "i0",
+    "block_id": "bA",
+    "n_tokens": 16,
+    "tier": "GPU",
+    "dp_rank": 0,
+    "group_idx": 0,
+    "at_ms": 1785154270000.0,
+    "content_id": "cS"
+   },
+   {
+    "kind": "store",
+    "instance_id": "i0",
+    "block_id": "bB",
+    "n_tokens": 16,
+    "tier": "GPU",
+    "dp_rank": 0,
+    "group_idx": 0,
+    "at_ms": 1785154270000.0,
+    "content_id": "cT"
+   }
+  ]
+ ],
+ "expect": {
+  "tag_slices": {
+   "slices": {
+    "Rule-3": {
+     "stores": 1,
+     "tokens": 16
+    },
+    "rule-3": {
+     "stores": 1,
+     "tokens": 16
+    }
+   },
+   "ambiguous": {}
+  }
+ }
+}

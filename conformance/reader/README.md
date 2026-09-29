@@ -90,6 +90,14 @@ consumer ingests them through its real delivery path — this checks record deco
   sequence beginning above zero (absence outside observation, spec §5.6) are not gaps
   and must not appear.
 
+- **`tag_slices`** — declared tag intervals (spec §2.8): per label, the stores attributed
+  to it (`stores`, and their `tokens`), and per label the stores at an edge of its interval,
+  attributed to nothing (`ambiguous`). A store is attributed only when its engine-clock
+  instant, widened by the skew allowance, lies wholly inside the declaration's latest
+  interval; the fixtures place every edge store one millisecond from the end, where no
+  conforming allowance keeps it inside, and every attributed store minutes inside. Labels
+  group byte for byte.
+
 The clock-domain fixtures (spec §2.6, `clock_*`) declare no family of their own,
 deliberately: §2.6 adds no verdict — it constrains how every other verdict may be
 computed — so its fixtures are adversarial streams graded by the families above. The

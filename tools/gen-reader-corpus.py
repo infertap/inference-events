@@ -16,6 +16,9 @@ The cases cover these obligations:
   kind of zero it is -- a measured absence is a finding, a single-holder zero is not a
   thing that could have been observed, and a zero over blocks with no portable identity
   says nothing at all. The verdict is the qualification a conforming reader attaches.
+- **tag_slices**: declared tag intervals (spec 2.8): per label, the stores attributed to it
+  and their tokens, and the stores at an edge of its interval, attributed to nothing. A store
+  counts only when its widened instant lies wholly inside the declaration's latest interval.
 - **staleness**: the liveness bounds (spec 5.8) and the unexplained-departure rule (spec
   2.4). Per producer run, one of {live, departed, unexplained, no_basis}, judged at the
   stream's knowledge horizon -- the latest producer-clock record anywhere in the stream,
@@ -107,6 +110,8 @@ T0 = 1785153670000.0
 RUN1 = "1785153600000-100"
 RUN2 = "1785153900000-200"
 RUN3 = "1785154200000-300"
+# A declarer's run (spec 2.8): its own incarnation, its own segments.
+DECLARER = "1785153600000-900"
 
 
 def segment(
@@ -204,6 +209,36 @@ def store(instance, block, at, content=None, dp_rank=0, seq=None, reused=None):
     if reused is not None:
         r["reused"] = reused
     return r
+
+
+def tag_interval(at, declaration, identity, tag, from_ms, until_ms=None):
+    """A declared tag interval (spec 2.8): producer clock throughout; open while `until_ms` is
+    absent."""
+    r = {
+        "kind": "tag_interval",
+        "at_ms": at,
+        "declaration_id": declaration,
+        "identity": identity,
+        "tag": tag,
+        "from_ms": from_ms,
+    }
+    if until_ms is not None:
+        r["until_ms"] = until_ms
+    return r
+
+
+def tag_slices(slices, ambiguous):
+    """The tag verdict (spec 2.8): per label, the stores attributed to it and their tokens; per
+    label, the stores at an edge of its interval, attributed to nothing."""
+    return {
+        "tag_slices": {
+            "slices": {
+                tag: {"stores": n, "tokens": 16 * n}
+                for tag, n in sorted(slices.items())
+            },
+            "ambiguous": dict(sorted(ambiguous.items())),
+        }
+    }
 
 
 def evict(instance, block, at, content=None, dp_rank=0):
@@ -1663,6 +1698,116 @@ FIXTURES = [
         attributed(
             [_hdr_seg(RUN1, 0, PROV_A, "agentic"), _hdr_seg(RUN2, 0, PROV_B, "batch")]
         ),
+    ),
+    (
+        "tag_a_store_at_the_edge_counts_nowhere",
+        "a declared interval of thirty minutes on one identity, and four stores of it: ten "
+        "minutes inside (attributed), one millisecond inside each end (ambiguous: no plausible "
+        "skew allowance -- the smallest preset in use is 50 ms -- keeps the widened instant "
+        "inside, and the store must count toward neither slice), and an hour outside (not "
+        "attributed, and not ambiguous either: it is nowhere near the interval). The interval "
+        "is the declarer's producer clock and the stores the engine's; attribution crosses the "
+        "domains only through the allowance (spec 2.6, 2.8)",
+        [
+            segment(
+                DECLARER,
+                0,
+                [tag_interval(T0, "a-1", "cS", "rule-3.applied", T0, T0 + 1_800_000.0)],
+                version="2.2",
+            ),
+            segment(
+                RUN1,
+                0,
+                [
+                    store("i0", "bA", T0 + 1.0, "cS"),
+                    store("i0", "bB", T0 + 600_000.0, "cS"),
+                    store("i0", "bC", T0 + 1_799_999.0, "cS"),
+                    store("i0", "bD", T0 + 5_400_000.0, "cS"),
+                ],
+            ),
+        ],
+        tag_slices({"rule-3.applied": 1}, {"rule-3.applied": 2}),
+    ),
+    (
+        "tag_a_later_statement_shortens_the_interval",
+        "a declaration stated open, then restated with an end twenty minutes in: the latest "
+        "statement is the interval, never a merge of the two, so a store forty minutes in is "
+        "attributed to nothing while one ten minutes in is attributed (spec 2.8)",
+        [
+            segment(
+                DECLARER,
+                0,
+                [
+                    tag_interval(T0, "a-17", "cS", "rule-3.applied", T0),
+                    tag_interval(
+                        T0 + 1_200_000.0,
+                        "a-17",
+                        "cS",
+                        "rule-3.applied",
+                        T0,
+                        T0 + 1_200_000.0,
+                    ),
+                ],
+                version="2.2",
+            ),
+            segment(
+                RUN1,
+                0,
+                [
+                    store("i0", "bA", T0 + 600_000.0, "cS"),
+                    store("i0", "bB", T0 + 2_400_000.0, "cS"),
+                ],
+            ),
+        ],
+        tag_slices({"rule-3.applied": 1}, {}),
+    ),
+    (
+        "tag_an_open_interval_runs_to_the_horizon",
+        "a declaration with no end: the identity carries the label now, and a store an hour "
+        "after the interval opened is attributed to it (spec 2.8)",
+        [
+            segment(
+                DECLARER,
+                0,
+                [tag_interval(T0, "a-2", "cS", "rule-3.applied", T0)],
+                version="2.2",
+            ),
+            segment(
+                RUN1,
+                0,
+                [
+                    store("i0", "bA", T0 + 3_600_000.0, "cS"),
+                    agent_stop(T0 + 7_200_000.0, 1),
+                ],
+            ),
+        ],
+        tag_slices({"rule-3.applied": 1}, {}),
+    ),
+    (
+        "tag_labels_are_opaque",
+        "two declarations on two identities whose labels differ only in case: a reader groups "
+        "by the label byte for byte and never interprets it, so they are two slices of one "
+        "store each, never one slice of two (spec 2.8)",
+        [
+            segment(
+                DECLARER,
+                0,
+                [
+                    tag_interval(T0, "a-3", "cS", "Rule-3", T0, T0 + 1_800_000.0),
+                    tag_interval(T0, "a-4", "cT", "rule-3", T0, T0 + 1_800_000.0),
+                ],
+                version="2.2",
+            ),
+            segment(
+                RUN1,
+                0,
+                [
+                    store("i0", "bA", T0 + 600_000.0, "cS"),
+                    store("i0", "bB", T0 + 600_000.0, "cT"),
+                ],
+            ),
+        ],
+        tag_slices({"Rule-3": 1, "rule-3": 1}, {}),
     ),
 ]
 

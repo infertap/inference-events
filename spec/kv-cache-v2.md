@@ -41,7 +41,7 @@ the first block of a rooted run, where vLLM carries it (§3.1); `lora_id` arrive
 name; and the tier vocabulary is the engine's own. SGLang's radix cache announces no reuse as a
 store, so its producer declares `reuse_reporting: "none"` (§2.3).
 
-**Status.** Wire contract 2.1. The canonical JSON Schema defines record structure;
+**Status.** Wire contract 2.2. The canonical JSON Schema defines record structure;
 this specification defines record and stream semantics. The conformance corpus covers
 JSON Lines, Parquet, identity construction, delivery, lifecycle, and reader obligations.
 
@@ -121,7 +121,7 @@ Every record carries:
 
 | field | type | presence | meaning |
 |---|---|---|---|
-| `kind` | string | required | which record this is (§2.3 to §2.5) |
+| `kind` | string | required | which record this is (§2.3 to §2.5, §2.8) |
 | `at_ms` | number | required | epoch milliseconds. See §2.6 for clock domains |
 
 Every record carries **provenance**: an operator-supplied set of top-level fields identifying the
@@ -542,6 +542,51 @@ any record other than `segment_open`.
 **A reader MUST NOT treat it as a fact about the records.** It is testimony from the producer about
 its own configuration, and it is admissible as exactly that. Two producers declaring the same class
 are making the same claim, not being observed to be alike.
+
+### 2.8 Declared records
+
+A declared record states a fact no cache record observes: which identity carried which label,
+and when. It comes from a **declarer**, a producer of its own (an experiment harness, a routing
+controller, a policy engine), never from the producer beside an engine. It travels as every
+other record does, in the declarer's own sealed segments under its own incarnation and
+`segment_seq`, so a missing segment is detected and a loss is declared by the rules of §4 and
+§5. Its `at_ms` and its interval fields are the producer clock (§2.6).
+
+*Producer note (informative).* A declarer holds no object-store credentials. It writes sealed
+segments to a local directory and a shipper moves them, the split the engine-side producer
+keeps, so a declarer's defect cannot reach the bucket and a declarer's credentials cannot leak
+from it.
+
+#### `tag_interval`
+
+Identity `identity` carried the label `tag` from `from_ms` until `until_ms`.
+
+Fields: [generated `tag_interval` definition](../docs/record-fields.md#tag_interval).
+
+**One declaration, restated.** A declarer MAY state a declaration more than once. A reader
+MUST take the statement of each `declaration_id` with the greatest `at_ms` as the declaration's
+interval, stream order breaking a tie, and MUST NOT merge statements: a later statement
+shortens, extends or ends the interval. `until_ms` absent means the interval is open and the
+identity carries the label now. [^tagrestate]
+
+**The label is opaque.** A reader MUST group by `tag` byte for byte and MUST NOT interpret it:
+not parse it, not case-fold it, not relate one label to another. Two labels that differ only
+in case are two labels. What a label means belongs to its declarer. [^tagopaque]
+
+**Attribution crosses clock domains, so it is conservative.** The interval is on the producer
+clock and a store's `at_ms` on the engine clock (§2.6). A reader MUST attribute a store whose
+`content_id` is `identity` to the interval only if the store's instant, widened by the reader's
+skew allowance on both sides, lies wholly inside the interval. A store whose widened instant
+crosses either end of an interval MUST NOT be attributed to that interval, and a reader MUST
+count such stores as ambiguous rather than drop them silently, so the edge's loss is visible.
+An open interval extends to the stream's knowledge horizon. [^tagedge]
+
+*Example (informative), from `reader/tag_a_later_statement_shortens_the_interval`:*
+
+```json
+{"kind": "tag_interval", "at_ms": 1785153670000.0, "declaration_id": "a-17",
+ "identity": "cS", "tag": "rule-3.applied", "from_ms": 1785153670000.0}
+```
 
 ## 3. Identity
 
@@ -1062,6 +1107,7 @@ conformant when the cited sections hold; these tables exist so an implementer ca
 | `segment_seq` from zero without gaps within an incarnation | §4.2 | `delivery/layout` |
 | Recovered segments marked; attributed keeps its identity, unattributed is discarded and declared | §4.3 | `delivery/records` (`segment_recovered` both forms; `recovering_segment`) |
 | `contract_version` in every `segment_open` | §6.1 | `delivery/records` |
+| A declaration's interval restated under its `declaration_id` | §2.8 | `reader/tag_a_later_statement_shortens_the_interval` |
 | Object-store keys follow the dated destination layout | §4.4 | `delivery/layout.json` (`dest_key_layout`), asserted in both consumers' suites |
 
 ### 8.2 Reader
@@ -1088,6 +1134,9 @@ conformant when the cited sections hold; these tables exist so an implementer ca
 | Absence exact only within a counted bracket; a lower bound everywhere else | §5.6 | `reader/absence_*` |
 | Coverage beside every figure; cross-instance zeros qualified | §5.7 | `reader/coverage_*`, `reader/zero_*` |
 | Staleness judged only against declared bounds, at the knowledge horizon | §5.8 | `reader/staleness_*` |
+| A declaration's latest statement is its interval; an open one runs to the horizon | §2.8 | `reader/tag_a_later_statement_shortens_the_interval`, `reader/tag_an_open_interval_runs_to_the_horizon` |
+| Labels grouped byte for byte, never interpreted | §2.8 | `reader/tag_labels_are_opaque` |
+| A store attributed only when its widened instant is wholly inside; edge stores counted as ambiguous | §2.6, §2.8 | `reader/tag_a_store_at_the_edge_counts_nowhere` |
 
 ---
 
@@ -1317,6 +1366,20 @@ Each note names the fixture that would fail an implementation violating the requ
     figures read as lower bounds over exactly the declared window, the sibling worker and the
     out-of-window spans stand, and the record's own producer-clock `at_ms` — placed inside an
     innocent span in one fixture — must not confine the loss.
+
+[^tagrestate]: `reader/tag_a_later_statement_shortens_the_interval` states a declaration and
+    then shortens it: a store inside the first interval and after the second's end is
+    attributed to nothing. `reader/tag_an_open_interval_runs_to_the_horizon` states one with no
+    `until_ms`: a store well after `from_ms` is attributed.
+
+[^tagopaque]: `reader/tag_labels_are_opaque`: two declarations whose labels differ only in case
+    are two slices, each with its own store.
+
+[^tagedge]: `reader/tag_a_store_at_the_edge_counts_nowhere`: stores one millisecond inside each
+    end of the interval are ambiguous under any plausible skew allowance (the smallest preset
+    in use is 50 ms), and a store ten minutes inside is attributed. As with `reader/clock_*`,
+    the fixture places every instant an order of magnitude inside or beyond any allowance, so
+    no conforming allowance can flip the verdict.
 
 ### Requirements with no covering fixture
 
