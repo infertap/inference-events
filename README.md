@@ -19,7 +19,7 @@ and conformance corpus.
 
 ## Reference
 
-- [KV cache specification](spec/kv-cache-v2.md): wire contract 2.1, identity, delivery, and reader obligations.
+- [KV cache specification](spec/kv-cache-v2.md): wire contract 2.2, identity, delivery, and reader obligations.
 - [Record fields](docs/record-fields.md): generated field reference.
 - [Architecture](docs/architecture.md): schema generation, validation, and compatibility.
 - [Conformance corpus](conformance/): producer and reader expectations, identity vectors, and encoding fixtures.

@@ -1,0 +1,95 @@
+{
+ "fixture_version": "v0",
+ "name": "tag_a_store_at_the_edge_counts_nowhere",
+ "note": "a declared interval of thirty minutes on one identity, and four stores of it: ten minutes inside (attributed), one millisecond inside each end (ambiguous: no plausible skew allowance -- the smallest preset in use is 50 ms -- keeps the widened instant inside, and the store must count toward neither slice), and an hour outside (not attributed, and not ambiguous either: it is nowhere near the interval). The interval is the declarer's producer clock and the stores the engine's; attribution crosses the domains only through the allowance (spec 2.6, 2.8)",
+ "segments": [
+  [
+   {
+    "kind": "segment_open",
+    "at_ms": 1785153669000.0,
+    "contract_version": "2.2",
+    "incarnation": "1785153600000-900",
+    "segment_seq": 0,
+    "heartbeat_secs": 60,
+    "max_segment_secs": 300
+   },
+   {
+    "kind": "tag_interval",
+    "at_ms": 1785153670000.0,
+    "declaration_id": "a-1",
+    "identity": "cS",
+    "tag": "rule-3.applied",
+    "from_ms": 1785153670000.0,
+    "until_ms": 1785155470000.0
+   }
+  ],
+  [
+   {
+    "kind": "segment_open",
+    "at_ms": 1785153669000.0,
+    "contract_version": "1.11",
+    "incarnation": "1785153600000-100",
+    "segment_seq": 0,
+    "heartbeat_secs": 60,
+    "max_segment_secs": 300
+   },
+   {
+    "kind": "store",
+    "instance_id": "i0",
+    "block_id": "bA",
+    "n_tokens": 16,
+    "tier": "GPU",
+    "dp_rank": 0,
+    "group_idx": 0,
+    "at_ms": 1785153670001.0,
+    "content_id": "cS"
+   },
+   {
+    "kind": "store",
+    "instance_id": "i0",
+    "block_id": "bB",
+    "n_tokens": 16,
+    "tier": "GPU",
+    "dp_rank": 0,
+    "group_idx": 0,
+    "at_ms": 1785154270000.0,
+    "content_id": "cS"
+   },
+   {
+    "kind": "store",
+    "instance_id": "i0",
+    "block_id": "bC",
+    "n_tokens": 16,
+    "tier": "GPU",
+    "dp_rank": 0,
+    "group_idx": 0,
+    "at_ms": 1785155469999.0,
+    "content_id": "cS"
+   },
+   {
+    "kind": "store",
+    "instance_id": "i0",
+    "block_id": "bD",
+    "n_tokens": 16,
+    "tier": "GPU",
+    "dp_rank": 0,
+    "group_idx": 0,
+    "at_ms": 1785159070000.0,
+    "content_id": "cS"
+   }
+  ]
+ ],
+ "expect": {
+  "tag_slices": {
+   "slices": {
+    "rule-3.applied": {
+     "stores": 1,
+     "tokens": 16
+    }
+   },
+   "ambiguous": {
+    "rule-3.applied": 2
+   }
+  }
+ }
+}

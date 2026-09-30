@@ -1,0 +1,79 @@
+{
+ "fixture_version": "v0",
+ "name": "tag_a_later_statement_shortens_the_interval",
+ "note": "a declaration stated open, then restated with an end twenty minutes in: the latest statement is the interval, never a merge of the two, so a store forty minutes in is attributed to nothing while one ten minutes in is attributed (spec 2.8)",
+ "segments": [
+  [
+   {
+    "kind": "segment_open",
+    "at_ms": 1785153669000.0,
+    "contract_version": "2.2",
+    "incarnation": "1785153600000-900",
+    "segment_seq": 0,
+    "heartbeat_secs": 60,
+    "max_segment_secs": 300
+   },
+   {
+    "kind": "tag_interval",
+    "at_ms": 1785153670000.0,
+    "declaration_id": "a-17",
+    "identity": "cS",
+    "tag": "rule-3.applied",
+    "from_ms": 1785153670000.0
+   },
+   {
+    "kind": "tag_interval",
+    "at_ms": 1785154870000.0,
+    "declaration_id": "a-17",
+    "identity": "cS",
+    "tag": "rule-3.applied",
+    "from_ms": 1785153670000.0,
+    "until_ms": 1785154870000.0
+   }
+  ],
+  [
+   {
+    "kind": "segment_open",
+    "at_ms": 1785153669000.0,
+    "contract_version": "1.11",
+    "incarnation": "1785153600000-100",
+    "segment_seq": 0,
+    "heartbeat_secs": 60,
+    "max_segment_secs": 300
+   },
+   {
+    "kind": "store",
+    "instance_id": "i0",
+    "block_id": "bA",
+    "n_tokens": 16,
+    "tier": "GPU",
+    "dp_rank": 0,
+    "group_idx": 0,
+    "at_ms": 1785154270000.0,
+    "content_id": "cS"
+   },
+   {
+    "kind": "store",
+    "instance_id": "i0",
+    "block_id": "bB",
+    "n_tokens": 16,
+    "tier": "GPU",
+    "dp_rank": 0,
+    "group_idx": 0,
+    "at_ms": 1785156070000.0,
+    "content_id": "cS"
+   }
+  ]
+ ],
+ "expect": {
+  "tag_slices": {
+   "slices": {
+    "rule-3.applied": {
+     "stores": 1,
+     "tokens": 16
+    }
+   },
+   "ambiguous": {}
+  }
+ }
+}

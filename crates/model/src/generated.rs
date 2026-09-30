@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 
 /// Wire contract version emitted by producers using this schema.
-pub const CONTRACT_VERSION: &str = "2.1";
+pub const CONTRACT_VERSION: &str = "2.2";
 /// Content identity construction defined by the wire contract.
 pub const CONTENT_CONSTRUCTION: &str = "sha256-chain-128-v2";
 pub(crate) const RECORD_KINDS: &[&str] = &[
@@ -20,6 +20,7 @@ pub(crate) const RECORD_KINDS: &[&str] = &[
     "segment_recovered",
     "segments_dropped",
     "store",
+    "tag_interval",
 ];
 /// Wire fields for `Endpoint`. Use [`crate::Record::decode`] for complete record validation.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -713,6 +714,51 @@ impl Store {
     }
 }
 
+/// Wire fields for `tag_interval`. Use [`crate::Record::decode`] for complete record validation.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct TagInterval {
+    /// Producer clock: when the declarer wrote this statement.
+    pub at_ms: f64,
+    /// The declaration this record states. A later record with the same id replaces the interval (§2.8).
+    pub declaration_id: String,
+    /// The portable identity the tag is on (§3.1).
+    pub identity: String,
+    /// An opaque label. A reader groups by it and never interprets it (§2.8).
+    pub tag: String,
+    /// **producer clock**: when the identity began carrying the tag.
+    pub from_ms: f64,
+    /// **producer clock**: when the identity stopped carrying the tag. Absent while the interval is open.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub until_ms: Option<f64>,
+    /// Extension fields. Serialization rejects names reserved by this structure.
+    #[serde(flatten, serialize_with = "TagInterval::serialize_extensions")]
+    pub extensions: Map<String, Value>,
+}
+
+impl TagInterval {
+    const RESERVED_FIELDS: &'static [&'static str] = &[
+        "kind",
+        "at_ms",
+        "declaration_id",
+        "identity",
+        "tag",
+        "from_ms",
+        "until_ms",
+    ];
+    fn serialize_extensions<S: serde::Serializer>(
+        extensions: &Map<String, Value>,
+        serializer: S,
+    ) -> Result<S::Ok, S::Error> {
+        crate::check_extensions(extensions, Self::RESERVED_FIELDS, "record")
+            .map_err(serde::ser::Error::custom)?;
+        extensions.serialize(serializer)
+    }
+    pub(crate) fn check_extensions(&self, path: &str) -> Result<(), crate::ValidationError> {
+        crate::check_extensions(&self.extensions, Self::RESERVED_FIELDS, path)?;
+        Ok(())
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "kind")]
 /// Record kinds defined by this schema. Direct Serde decoding checks layout only.
@@ -750,6 +796,9 @@ pub enum KnownRecord {
     /// The `store` record.
     #[serde(rename = "store")]
     Store(Store),
+    /// The `tag_interval` record.
+    #[serde(rename = "tag_interval")]
+    TagInterval(TagInterval),
 }
 
 impl KnownRecord {
@@ -766,6 +815,7 @@ impl KnownRecord {
             Self::SegmentRecovered(record) => record.check_extensions("record"),
             Self::SegmentsDropped(record) => record.check_extensions("record"),
             Self::Store(record) => record.check_extensions("record"),
+            Self::TagInterval(record) => record.check_extensions("record"),
         }
     }
 }
